@@ -1,5 +1,4 @@
-
-from routes import users, posts, jobs, search, balance
+from routes import users, messages, availabilities, actions
 
 from utils.common import app
 
