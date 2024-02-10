@@ -8,7 +8,8 @@ from sqlalchemy import not_, and_, or_, case
 from sqlalchemy.types import String
 from datetime import datetime as Datetime
 from datetime import Time
-import time
+import datetime
+from zoneinfo import ZoneInfo
 
 # declarative base class
 class BaseTable(DeclarativeBase):
@@ -33,54 +34,21 @@ class Message(BaseTable): #Holds administrative messages and notifications of pe
     time_posted: Mapped[int]
     title: Mapped[str]
     text: Mapped[str]
-    
-    @hybrid_property
-    def is_trendy(self):
-        return (self.views>10) & (self.likes>=3*self.dislikes) & (self.type=="POST") & (self.time_posted>time.time()-5*60*60)
-    
-    @hybrid_property
-    def trendy_ranking(self):
-        return self.views/(self.dislikes+1)
-    
-    
-    @hybrid_method
-    def is_viewable(self,user):
-        if not user.hasType(user.SURFER):
-            return False
-        if self.type not in self.public_types:
-            if ((self.author==user.id) or self.parent==user.inbox): #Either user's inbox or message in that inbox
-                return True
-            if (user.hasType(user.SUPER)) and (self.type in ["REPORT","DISPUTE"]):
-                return True
-            else:
-                return False
-        else:
-            return True
-    
-    @is_viewable.expression
-    def is_viewable(cls,user):
-        return case(
-            (not_(user.hasType(user.SURFER)), False),
-            (cls.type.in_(cls.public_types), True),
-            else_=
-                case(
-                (or_(cls.author==user.id,cls.parent==user.inbox),True),
-                (and_(cls.type.in_(["POST","DISPUTE"]),user.hasType(user.SUPER)),True),
-                else_=False
-                )
-           )
 
+#See bookings by querying BOOKED, delete any availability of any type
 class Availabilities(BaseTable):
     __tablename__ = "AVAILABILITIES"
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
     author: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
-    available: Mapped[bool] = mapped_column(default=True)
+    available: Mapped[str] = mapped_column(default="AVAILABLE") #Other options are BLOCKED, and BOOKED
     start_datetime: Mapped[Datetime]
-    end_datetime: Mapped[Datetime]
+    end_datetime: Mapped[Datetime] = mapped_column(default=datetime.max.localize(ZoneInfo("UTC")))
     days_supported: Mapped[int] = mapped_column(default=2**8-1) #Bitstring of 7 bits
     start_time: Mapped[Time]
     end_time: Mapped[Time]
-    type: Mapped[str] = mapped_column(default=availabilities.ONETIME)
+    repetition: Mapped[str] = mapped_column(default="ONETIME")
+    services: Mapped[str] = mapped_column(default="")
+    
     
     @hybrid_method
     def date_within_start_and_end(self, datetime): #For all datetime objects, it must be converted to UTC before passing into this function (this will be done when storing)
@@ -100,20 +68,50 @@ class Availabilities(BaseTable):
     
     @hybrid_method
     def in_the_same_week(self, datetime):
-        #Implement by subtracting the two unix timestamps and see if it is less than 7 days in seconds (use timestamp()). Remember to reverse it as self must be first
-        pass
+        return -(self.start_datetime.replace(month=datetime.month, year=datetime.year).timestamp()-datetime.timestamp()) <= 7*24*60*60
     
-
-#available or not.
-class Balance(BaseTable):
-    __tablename__="BALANCE"
+    @hybrid_method
+    def on_the_right_day(self, datetime):
+        if self.repetition=="DAILY":
+            return True
+        else:
+            on_supported_weekday=self.day_of_week_is_supported(datetime)
+            in_the_same_week=self.in_the_same_week(datetime)
+            
+            if self.repetition=="WEEKLY":
+                return on_supported_weekday
+            elif self.repetition=="MONTHLY":
+                return on_supported_weekday & in_the_same_week 
+            elif self.repetition=="YEARLY":
+                return on_supported_weekday & in_the_same_week & (self.start_datetime.month==datetime.month)
+            elif self.repetition=="ONETIME":
+                return (self.start_datetime.year==datetime.year) and (self.start_datetime.month==datetime.month) and (self.start_datetime.day==datetime.day)
     
-    id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
-    balance: Mapped[float] = mapped_column(default=0)
-
-class Upload(BaseTable):
-    __tablename__="UPLOADS"
+    @on_the_right_day.expression
+    def on_the_right_day(self, datetime):
+        return case(
+            (self.repetition=="DAILY", True),
+            (self.repetition=="ONETIME", (self.start_datetime.year==datetime.year) & (self.start_datetime.month==datetime.month) & (self.start_datetime.day==datetime.day)),
+            else_ = self.day_of_week_is_supported(datetime) &
+            case(
+                (self.repetition=="WEEKLY", True),
+                else_ = self.in_the_same_week(datetime) &
+                case(
+                    (self.repetition=="MONTHLY", True),
+                    (self.repetition=="YEARLY", (self.start_datetime.month==datetime.month))
+                )
+            )
+        )
+                
+        
+    @hybrid_method
+    def time_period_contains(self, datetime, time):
+        return self.date_within_start_and_end(datetime) & self.time_within_start_and_end(time) & self.on_the_right_day(datetime)
     
-    id: Mapped[int]= mapped_column(primary_key=True,autoincrement=True)
-    path: Mapped[str]
-    type: Mapped[str]
+    @hybrid_method
+    def has_service(self, service):
+        return f" {service} " in self.services
+    
+    @has_service.expression
+    def has_service(self, service)
+        return self.services.contains(f" {service} ")
