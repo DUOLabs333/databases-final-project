@@ -1,4 +1,4 @@
-from routes import users, messages, availabilities, actions
+from routes import users, availabilities, actions
 
 from utils.common import app
 

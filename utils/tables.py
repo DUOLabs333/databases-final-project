@@ -1,13 +1,15 @@
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
-from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
-from utils import users
-from sqlalchemy import func, select, literal, ForeignKey
+from sqlalchemy.ext.hybrid import hybrid_method
+from utils import users, availabilities
+from sqlalchemy import select, literal, ForeignKey
 from sqlalchemy import not_, and_, or_, case
 from sqlalchemy.types import String
-
+from datetime import datetime as Datetime
+from datetime import Time
 import time
+
 # declarative base class
 class BaseTable(DeclarativeBase):
     pass
@@ -69,7 +71,38 @@ class Message(BaseTable): #Holds administrative messages and notifications of pe
            )
 
 class Availabilities(BaseTable):
-    __tablename__
+    __tablename__ = "AVAILABILITIES"
+    id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
+    author: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
+    available: Mapped[bool] = mapped_column(default=True)
+    start_datetime: Mapped[Datetime]
+    end_datetime: Mapped[Datetime]
+    days_supported: Mapped[int] = mapped_column(default=2**8-1) #Bitstring of 7 bits
+    start_time: Mapped[Time]
+    end_time: Mapped[Time]
+    type: Mapped[str] = mapped_column(default=availabilities.ONETIME)
+    
+    @hybrid_method
+    def date_within_start_and_end(self, datetime): #For all datetime objects, it must be converted to UTC before passing into this function (this will be done when storing)
+        return (self.start_datetime <= datetime) & (self.end_datetime >= datetime)
+    
+    @hybrid_method
+    def time_within_start_and_end(self, time): #We assume that start_time and end_time
+        return (self.start_time <= time) & (self.end_time >= time)
+        
+    @hybrid_method
+    def day_of_week_is_supported(self, datetime):
+        return self.days_supported & (1 << datetime.weekday())
+    
+    @day_of_week_is_supported.expression
+    def day_of_week_is_supported(self, datetime):
+        return self.days_supported.bitwise_and(1 << datetime.weekday())
+    
+    @hybrid_method
+    def in_the_same_week(self, datetime):
+        #Implement by subtracting the two unix timestamps and see if it is less than 7 days in seconds (use timestamp()). Remember to reverse it as self must be first
+        pass
+    
 
 #available or not.
 class Balance(BaseTable):
