@@ -21,10 +21,11 @@ class User(BaseTable):
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
     username: Mapped[str] = mapped_column(unique=True)
     password_hash: Mapped[str]
-    creation_time: Mapped[int]
+    creation_time: Mapped[Datetime]
     profile: Mapped[str] = mapped_column(default="")
     location_long: Mapped[float] = mapped_column(default=0)
     location_lat: Mapped[float] = mapped_column(default=0)
+    avatar: Mapped[int] = mapped_column(nullable=True) #If not NULL, points to an index that points 
         
                 
 class Message(BaseTable): #Holds administrative messages and notifications of people booking service
@@ -40,7 +41,7 @@ class Availabilities(BaseTable):
     __tablename__ = "AVAILABILITIES"
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
     author: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
-    available: Mapped[str] = mapped_column(default="AVAILABLE") #Other options are BLOCKED, and BOOKED
+    available: Mapped[bool] = mapped_column(default=True) #False for blocked
     start_datetime: Mapped[Datetime]
     end_datetime: Mapped[Datetime] = mapped_column(default=datetime.max.localize(ZoneInfo("UTC")))
     days_supported: Mapped[int] = mapped_column(default=2**8-1) #Bitstring of 7 bits
@@ -115,3 +116,17 @@ class Availabilities(BaseTable):
     @has_service.expression
     def has_service(self, service)
         return self.services.contains(f" {service} ")
+
+class Booking(BaseTable):
+    id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
+    author: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
+    buisness: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
+    services: Mapped[str]
+    date: Mapped[Datetime]
+    start_time: Mapped[Time]
+    end_time: Mapped[Time]
+    code: Mapped[int] #Must be random
+    
+    #Later, if efficiency becomes a concern, we can add a modified time_period_contains here as is_within. However, that takes time, so I don't care right now
+    
+    
