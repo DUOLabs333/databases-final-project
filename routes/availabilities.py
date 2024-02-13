@@ -35,6 +35,10 @@ def create_post():
         
         availability.author=uid
         assign_json_to_availability(availability, request.json)
+        
+        if availability.available==False: #A block
+            cancel_all_blocked_bookings(session, availability)
+            
         session.commit()
         
     return result
@@ -100,12 +104,16 @@ def availability_search():
         query=select(tuple_(tables.Availability.author, tables.User.zip_code).distinct()).join(tables.User, tables.Availability.author==tables.User.id).where(get_availabilities_in_range(session, start_datetime, end_datetime, services))
         
         rows=[]
-        
+         
         for row in session.execute(query).all():
+            if availabilities.check_for_conflict(session, start_datetime, end_datetime, row[0]):
+                result["error"]="CONFLICT"
+                return result
+                
             if zip_code is None:
                 rows.append((row[0], 0))
             else:
-                rows.append((row[0], dist.query_postal_code(zip_code, row[1])
+                rows.append((row[0], dist.query_postal_code(zip_code, row[1])))
         
         if zip_code is not None:
             rows.sort(reverse=True, key= row[1])
