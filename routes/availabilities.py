@@ -28,14 +28,13 @@ def create_post():
     result={}
     
     uid=request.json["uid"]
-    user=users.getUser(uid)
     
     with Session(common.database) as session:
         availability=tables.Availability()
         session.add(availability)
         
         availability.author=uid
-        assign_json_to_availability(availability, request.json)
+        availabilities.assign_json_to_availability(availability, request.json)
         
         if availability.available==False: #A block
             cancel_all_blocked_bookings(session, availability)

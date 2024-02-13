@@ -2,78 +2,151 @@
 
 from utils import common, tables
 from utils.common import app
-from utils import users, posts, jobs
+from utils import bookings
 from flask import request
-from sqlalchemy import select, desc, not_, literal
-from sqlalchemy.types import String
+from sqlalchemy import select
 from sqlalchemy.orm import Session
-import requests
-import json, time
+from datetime import datetime
+from timezone import ZoneInfo
+import timezone
+import random
 
-@app.route("/jobs/show")
+@app.route("/bookings/create")
 @common.authenticate
-def jobs_list():
+def create_booking():
     result={}
     
     uid=request.json["uid"]
-    before=request.json["before"] or float("inf")
-    limit=request.json.get("limit",20)
     with Session(common.database) as session:
-        user=users.getUser(uid,session)
-        query=select(tables.Post.id).where((tables.Post.type=="JOB") & not_(tables.Post.hidden) & (tables.Post.author!=user.id) & not_(literal(user.applied).contains(" "+tables.Post.id.cast(String)+"|")) & (tables.Post.id < before)).order_by(desc(tables.Post.id)).limit(limit) #You can't be shown jobs you applied before, no matter how recently
+        booking=tables.Booking()
+        session.add(booking)
         
-        result["posts"]=session.scalars(query).all()
-        result["before"]=common.last(result["posts"]) #New pagination parameter
+        booking.author=uid
+        ret=bookings.assign_json_to_booking(session, booking, request.json, True)
+        
+        if ret==-1:
+            session.remove(booking)
+            result["error"]="BLOCKED"
+        
+        bookings.code=random.randint(10000,10000000)
+        session.commit()
     
     return result
 
-@app.route("/jobs/apply")
+@app.route("/bookings/info")
 @common.authenticate
-def jobs_apply():
+def booking_info():
     result={}
     
-    
-    uid=request.json["uid"]
-    post_id=request.json["post_id"]
-    
     with Session(common.database) as session:
-        user=users.getUser(uid,session)
-        post=posts.getPost(post_id,session)
+        booking=bookings.getBooking(request.json["id"],session=session)
         
-        applied=common.fromStringList(user.applied)
-        applied=[_.split("|") for _ in applied] #Of the form <id>|<last_applied_time>
-        applied_idx=-1
-
-        for i,e in enumerate(applied):
-            if int(e[0])==user.id:
-                applied_idx=i
-                break
-        
-        if (applied_idx>=0) and (int(applied[applied_idx][1])>time.time()-(4*60)): #Appplied less than 4 minutes ago
-            result["error"]="APPLIED_RECENTLY"
-            return result
-            
-        if post.hidden: #Can't apply to a hidden post
-            result["error"]="NOT_AVAILABLE"
-            
-        if not(user.hasType(user.ORDINARY)) or user.hasType(user.CORPORATE): #CUs and non-OUs should not be able to apply
+        if request.json["uid"] not in [booking.author, booking.buisness]:
             result["error"]="INSUFFICIENT_PERMISSION"
             return result
         
-        info=json.loads(post.text)
-        r=requests.post(info["endpoint"],data=request.json["questions"]) #Endpoint must accept POST requests
+        timezone=ZoneInfo(request.json.get("timezone","UTC"))
         
-        if r.status_code!=200: #Endpoint must return 200 upon success
-            result["error"]="SUBMISSION_ERROR"
+        for col in post.__mapper__.attrs.keys():
+            value=getattr(availability,col)
+            if col=="id":
+                continue
+            elif col.endswith("_datetime"):
+                value=value.localize(timezone).strftime(DATETIME_FORMAT)
+            if col=="services":
+                value=common.fromStringList(value)
+                
+            result[col]=value
+    return result
+
+@app.route("/bookings/edit")
+@common.authenticate
+def booking_edit():  
+    result={}
+    
+    with Session(common.database) as session:
+        booking=bookings.getBooking(request.json["id"],session=session)
+        
+        if booking is None:
+            result["error"]="DOES_NOT_EXIST"
+            return result
+        elif uid!=booking.author:
+             result["error"]="INSUFFICIENT_PERMISSION"
+             return result
+        
+        ret=bookings.assign_json_to_booking(session, booking, request.json, False)
+        
+        if ret==-1:
+            result["error"]="BLOCKED"
             return result
         else:
-            jobs.charge_for_post(post,session) #While we can't "reverse" a submission in case of a CU not being able to pay, we will hide the post for the next submission
-            
-            applied[applied_idx][1]=str(time.time())
-            applied=["|".join(_) for _ in applied] #Go backwards and join up the list again
-            user.applied=applied
-            
             session.commit()
             return result
-            
+
+@app.route("/bookings/cancel")
+@common.authenticate
+def booking_cancel():
+    result = {}
+    
+    with Session(common.database) as session:
+        booking=bookings.getBooking(request.json["id"],session=session)
         
+        if booking is None:
+            result["error"]="DOES_NOT_EXIST"
+            return result
+        elif uid not in [booking.author, booking.buisness]:
+             result["error"]="INSUFFICIENT_PERMISSION"
+             return result
+        
+        now=datetime.datetime.now(timezone.utc)
+        
+        if not(uid==booking.author and booking.start_datetime < now): #Individuals can only cancel before the start time
+            result["error"]="TOO_LATE"
+            return result
+        elif not(uid==booking.buisness and booking.start_datetime >= now): #Buisnesses can only cancel after the appointment's start time (in case of no-shows)
+            result["error"]="TOO_EARLY"
+            return result
+        session.delete(booking)
+        session.commit()
+    return result
+
+@app.route("/bookings/list")
+@common.authenticate
+def booking_list():
+    result = {}
+    
+    uid=request.json["uid"]
+    with Session(common.database) as session:
+        query=select(table.Booking.id).where(table.Booking.id==uid | table.Booking.buisness==uid)
+        
+        result["bookings"]=list(session.scalars(query).all())
+        return result
+
+@app.route("/bookings/checkout") #When the appointment is over (the code is still used by the customer to authenticate themselves to the buisness when they first walk-in
+@common.authenticate
+def booking_checkout():
+    result = {}
+    uid=request.json["id"]
+    
+    with Session(common.database) as session:
+        booking=bookings.getBooking(request.json["id"],session=session)
+        
+        if booking is None:
+            result["error"]="DOES_NOT_EXIST"
+            return result
+        elif uid !=booking.buisness:
+             result["error"]="INSUFFICIENT_PERMISSION"
+             return result
+        
+        checkout_message=tables.Message()
+        checkout_message.recipient=booking.author
+        checkout_message.time_posted=datetime.now(UTC)
+        checkout_message.title="Your appointment is over"
+        checkout_message.text=f"The buisness{booking.buisness} has marked your booking {booking.id} as over. Thank you for using us!"
+        
+        session.delete(booking)
+        session.add(checkout_message)
+        
+        session.commit()
+        
+        return result
