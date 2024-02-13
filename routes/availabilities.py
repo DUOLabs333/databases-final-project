@@ -4,17 +4,15 @@ from utils import availabilities
 
 from utils.common import app
 
-from flask import request, send_file
-from sqlalchemy import select, desc, not_
+from flask import request, send_file, current_app
+from sqlalchemy import select
 
 from sqlalchemy.orm import Session
+import pgeocode
 
-import base64, os, random, string
-import multiprocessing, json
+import os
 from pathlib import Path
-from datetime import datetime, time
-
-from flask import request, send_file, current_app, url_for, jsonify
+from datetime import datetime
 from werkzeug.utils import secure_filename
 
 DATETIME_FORMAT="%Y-%m-%d %H:%M:%S.%f"
@@ -79,211 +77,85 @@ def availability_edit():
 @common.authenticate
 def availability_delete():     
     return availabilities.availability_change(request, "delete")
+
+dist = pgeocode.GeoDistance('US')
+
+@app.route("/availabilities/search")
+def availability_search():
+    timezone=ZoneInfo(request.json.get("timezone","UTC"))
     
-@app.route("/posts/like")
-@common.authenticate
-def like_post():
-    result = {}
+    start_datetime=datetime.strptime(request.json["start_datetime"], DATETIME_FORMAT).replace(tzinfo=timezone).localize(UTC)
     
-    uid=request.json["uid"]
-    post_id=request.json["post_id"]
-    user = users.getUser(uid)
-    if not user.hasType(user.ORDINARY):
-        result["error"] = "INSUFFICIENT_PERMISSION"
+    end_datetime=datetime.strptime(request.json["end_datetime"], DATETIME_FORMAT).replace(tzinfo=timezone).localize(UTC)
+    
+    services=request.json["services"]
+    
+    zip_code=request.json.get("zip_code", None)
+    
+    start=request.json.get("start",0)
+    
+    length=request.json.get("length", 50)
+    
+    with Session(common.database) as session:
+        query=select(tuple_(tables.Availability.author, tables.User.zip_code).distinct()).join(tables.User, tables.Availability.author==tables.User.id).where(get_availabilities_in_range(session, start_datetime, end_datetime, services))
+        
+        rows=[]
+        
+        for row in session.execute(query).all():
+            if zip_code is None:
+                rows.append((row[0], 0))
+            else:
+                rows.append((row[0], dist.query_postal_code(zip_code, row[1])
+        
+        if zip_code is not None:
+            rows.sort(reverse=True, key= row[1])
+        
+        end=min(start+length+1, len(rows))
+        rows=rows[start: end]
+    
+        businesses, distances = zip(*rows)
+        
+        result["businesses"]=list(businesses)
+        result["distances"]=list(distances)
+        result["end"]=end
+        
         return result
 
-    with Session(common.database) as session:
-        post = posts.getPost(post_id,session)
-        if not post:
-            result["error"] = "POST_NOT_FOUND"
-            return result
+media_folder = os.path.join(current_app.root_path,"static","media")
 
-        user = users.getUser(uid,session)
-        liked_posts = common.fromStringList(user.liked_posts)
-        disliked_posts = common.fromStringList(user.disliked_posts)
-        
-        # If post is already disliked, remove the dislike first
-        if str(post_id) in disliked_posts:
-            post.dislikes -= 1
-            disliked_posts.remove(str(post_id))
-            user.disliked_posts = common.toStringList(disliked_posts)
-
-        # Proceed to like the post if not already liked
-        if str(post_id) not in liked_posts:
-            post.likes += 1
-            liked_posts.append(str(post_id))
-            user.liked_posts = common.toStringList(liked_posts)
-        else:
-            liked_posts.remove(str(post_id)) #Reverses like. Prevents duplication for /unlike
-            user.liked_posts = common.toStringList(liked_posts)
-            post.likes -= 1
-            
-        session.commit()
-        users.getUser(post.author).update_trendy_status() #Event handler
-        session.commit()
-
-    return result
-
-@app.route("/posts/dislike")
-@common.authenticate
-def dislike_post():
-    result = {}
-    
-    uid=request.json["uid"]
-    post_id=request.json["post_id"]
-    user = users.getUser(uid)
-    if not user.hasType(user.ORDINARY):
-        result["error"] = "NOT_ORDINARY_USER"
-        return result
-
-    with Session(common.database) as session:
-        post = posts.getPost(post_id,session)
-        if not post:
-            result["error"] = "POST_NOT_FOUND"
-            return result
-
-        user = users.getUser(uid,session)
-        liked_posts = common.fromStringList(user.liked_posts)
-        disliked_posts = common.fromStringList(user.disliked_posts)
-        
-        # If post is already liked, remove the like first
-        if str(post_id) in liked_posts:
-            post.likes -= 1
-            liked_posts.remove(str(post_id))
-            user.liked_posts = common.toStringList(liked_posts)
-
-        # Proceed to dislike the post if not already disliked
-        if str(post_id) not in disliked_posts:
-            post.dislikes += 1
-            disliked_posts.append(str(post_id))
-            user.disliked_posts = common.toStringList(disliked_posts)
-        else:
-            disliked_posts.remove(str(post_id))
-            user.disliked_posts = common.toStringList(disliked_posts)
-            post.dislikes -= 1
-        
-        session.commit()
-        users.getUser(post.author).update_trendy_status() #Event handler
-        session.commit()
-
-    return result
-
-
-random_string = lambda N: ''.join(random.choices(string.ascii_uppercase + string.digits, k=N))
-
-upload_lock=multiprocessing.Lock()
-
-@app.route("/users/upload")
+@app.route("/upload")
 @common.authenticate
 def image_upload():
     result={}
-    uid=request.json["uid"]
-    user=users.getUser(uid)
-    if not user.hasType(user.ORDINARY):
-        result["error"]="INSUFFICIENT_PERMISSION" #If not OU, can't post, dislike, like, etc.
-        return result
-        
-    data=request.json.get("data")  
-    type=request.json.get("type")
+    Path(media_folder).mkdir(parents=True,exist_ok=True)
     
-    data_size=(len(data) * 3) / 4 - data.count('=', -2)
+    media = request.files.get['media']
+    type=media.content_type
+    size=media.content_length
     
-    if data_size> 10*(10**6): #More than 10MB
+    if size>10*(10**6):
         result["error"]="FILE_TOO_LARGE"
         return result
-        
-    upload_lock.acquire()
+
     with Session(common.database) as session:
         upload=tables.Upload()
-        
-        while True: #Make sure there is not a row already with this filename
-            upload.path="/".join(["images",random_string(10)])
-            if session.scalars(select(tables.Upload.id).where(tables.Upload.path==upload.path)).first() is None:
-                break
-            
-            
+                
         upload.type=type
         
         session.add(upload)
         session.commit()
         
-        upload_lock.release()
-        
-        Path("images").mkdir(parents=True, exist_ok=True)
-        
-        with open(upload.path.replace("/",os.path.sep),"wb+") as f: #Windows. That is all I'll say.
-            f.write(base64.b64decode(data))
+        media.save(os.path.join(media_folder, str(upload.id)))
             
         result["id"]=upload.id
         return result
-        
-@app.route("/posts/top3posts")
-@common.authenticate
-def top3posts():
-    result={}
-    
-    result["posts"]=[]
-    
-    user=users.getUser(request.json["uid"])
-    
-    query=select(tables.Post.id).where(tables.Post.is_trendy & not_( user.has_blocked(tables.Post.author))).order_by(desc(tables.Post.trendy_ranking)).limit(3)
-    
-    with Session(common.database) as session:
-        result["posts"]=session.scalars(query).all()
-    
-    return result
     
 @app.route("/media")
 def image():
     
     id=request.json["id"]
-    with Session(common.database) as session:
-        path, type =session.execute(select(tables.Upload.path, tables.Upload.type).where(tables.Upload.id==id)).first()
-        path=path.replace("/",os.path.sep)
-        
-        return send_file(path, mimetype=type)
-        
-@app.route("/posts/report")
-@common.authenticate
-def report_post():
-    result = {}
-
-    uid = request.json["uid"]
-    target = request.json["target"] #Target post, not user
-    reason = request.json["reason"]
-   
-    with Session(common.database) as session:
-        user = users.getUser(uid, session) #user making report
-        if not user.hasType(user.ANON):
-            result["error"]="INSUFFICIENT_PERMISSION"
-            return result
-            
-        text={
-        "target": target,
-        "reason": reason
-        }
-        
-        data = {
-        "author": uid,
-        "text": json.dumps(text), #report by complainer against complainee and then report text
-        "type": "REPORT",
-        "keywords": ["OPEN"]
-        }
-            
-            
-        # Create the report post
-        result["id"] = posts.createPost(data)
-        return result
-        
-@app.route("/upload_image")
-def image1():
-    upload_folder = os.path.join(current_app.root_path,"static","images")
     
-    Path(upload_folder).mkdir(parents=True,exist_ok=True)
+    with Session(common.database) as session:
+        type=session.scalars(select(tables.Upload.type).where(tables.Upload.id==id).limit(1)).first()
         
-    uploaded_img = request.files.get('image')  # Get the image that has been uploaded
-    img_name = secure_filename(uploaded_img.filename).lower()  # Get the name of the iamge
-    uploaded_img.save(os.path.join(upload_folder, img_name))  # Save that image to the appropriate directory
-    location = url_for('static', filename='images/' + img_name)
-    print("LOCATION: ", location)
-    return jsonify({'location': location})
+    return send_file(os.path.join(media_folder, str(id)), mimetype=type)

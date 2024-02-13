@@ -25,7 +25,7 @@ class User(BaseTable):
     profile: Mapped[str] = mapped_column(default="")
     address: Mapped[str] = mapped_column(default="")
     zip_code: Mapped[str] = mapped_column(default="")
-    avatar: Mapped[int] = mapped_column(nullable=True) #If not NULL, points to an index that points 
+    avatar: Mapped[int] = mapped_column(ForeignKey("UPLOADS.id"), nullable=True)
         
                 
 class Message(BaseTable): #Holds administrative messages and notifications of people booking service
@@ -134,5 +134,4 @@ class Upload(BaseTable):
     __tablename__="UPLOADS"
     
     id: Mapped[int]= mapped_column(primary_key=True,autoincrement=True)
-    path: Mapped[str]
     type: Mapped[str]

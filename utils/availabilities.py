@@ -1,6 +1,7 @@
 import utils.common as common
 import utils.tables as tables
 from sqlalchemy import or_, true
+from datetime import datetime, time
 
 def getAvailability(availability_id,session=None):
     return common.getItem(tables.Availability,availability_id,session)
@@ -34,10 +35,11 @@ def assign_json_to_availability(availabilitiy, data):
 def reassign_or_cancel_bookings(session, availability):
     query=select(table.Bookings).where(tables.Bookings.availability_parent_id==availability.id)
     for booking in session.scalars(query):
-        new_availabilities=get_availabilities_in_range(session, booking.start_datetime, booking.end_datetime, common.fromStringList(booking.services), buisness=booking.buisness) #Optional buisness id to filter by
+        sub_query=select(tables.Availability).where(get_availabilities_in_range(booking.start_datetime, booking.end_datetime, common.fromStringList(booking.services)) & tables.Availability.author==booking.buisness).limit(1)
+        availability=session.scalars(sub_query).first()
     
-        if len(new_availabilities)>0:
-            booking.availability_parent_id=new_availabilities[0].id
+        if availability is not None:
+            booking.availability_parent_id=availability.id
         else:
             cancel_post=tables.Message()
             cancel_post.recipient=booking.author
@@ -47,13 +49,12 @@ def reassign_or_cancel_bookings(session, availability):
             
             session.delete(booking)
             session.add(cancel_post)
-            
-def get_availabilities_in_range(session, start_datetime, end_datetime, services, buisness=None):
-    query=select(tables.Availability).where(tables.Availability.time_period_contains(start_datetime) & tables.Availability.time_period_contains(end_datetime) & or_(tables.Availability.has_service(service) for service in services) & (tables.Availability.author==buisness if buisness is not None else true())).distinct()
-    
-    return session.query(query).all()
+ 
+          
+def get_availabilities_in_range(start_datetime, end_datetime, services, buisness=None):
+    return tables.Availability.time_period_contains(start_datetime) & tables.Availability.time_period_contains(end_datetime) & or_(tables.Availability.has_service(service) for service in services)
 
-def availability_edit(request, method):
+def availability_change(request, method):
     result={}
     
     uid=request.json["uid"]
