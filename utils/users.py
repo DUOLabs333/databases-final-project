@@ -1,5 +1,6 @@
 from utils import tables, common
-from sqlalchemy import Session, select
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 def getUser(user_id,session=None):
     return common.getItem(tables.User,user_id,session)

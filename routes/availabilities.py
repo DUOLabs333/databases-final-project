@@ -5,7 +5,8 @@ from utils.common import app
 from utils import availabilities
 
 from flask import request, send_file, current_app
-from sqlalchemy import select, Session, tuple_
+from sqlalchemy import select, tuple_
+from sqlalchemy.orm import Session
 import pgeocode
 
 import os
@@ -113,7 +114,7 @@ def availability_search():
                 rows.append((row[0], dist.query_postal_code(zip_code, row[1])))
         
         if zip_code is not None:
-            rows.sort(reverse=True, key= row[1])
+            rows.sort(reverse=True, key= lambda row: row[1])
         
         end=min(start+length+1, len(rows))
         rows=rows[start: end]

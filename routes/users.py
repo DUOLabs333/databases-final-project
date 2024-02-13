@@ -5,7 +5,9 @@ from utils import users
 
 from flask import request
 
-from sqlalchemy import select, Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 import multiprocessing
 from datetime import datetime, timezone
 
@@ -29,7 +31,7 @@ def create():
                 result["error"]="USERNAME_EXISTS"
                 return result
                 
-        result=users.assign_json_to_user(session, user, request.json)
+        users.assign_json_to_user(user, request.json)
         
         user.creation_time=datetime.now(timezone.utc)
         session.add(user)
@@ -81,7 +83,7 @@ def modify():
                 result["error"]="NAME_ALREADY_TAKEN"
                 return result
                 
-             result=users.assign_json_to_user(user, request.json)
+             users.assign_json_to_user(user, request.json)
              user_lock.release()
              session.commit()
              return result

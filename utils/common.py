@@ -4,7 +4,8 @@ import sys,os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..")))
 
-from sqlalchemy import create_engine, select, Session
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
 from flask import Flask, request
 from flask_cors import CORS
 from zoneinfo import ZoneInfo

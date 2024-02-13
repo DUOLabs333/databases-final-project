@@ -4,10 +4,10 @@ from utils import common, tables
 from utils.common import app
 from utils import bookings
 from flask import request
-from sqlalchemy import select, Session
-from datetime import datetime
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
-import timezone
 import random
 
 @app.route("/bookings/create")

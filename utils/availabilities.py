@@ -1,6 +1,7 @@
 import utils.common as common
 import utils.tables as tables
-from sqlalchemy import or_, true, select, Session
+from sqlalchemy import or_, true, select
+from sqlalchemy.orm import Session
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
@@ -36,7 +37,7 @@ def assign_json_to_availability(availability, data):
         setattr(availability,col,value)
         
 def reassign_or_cancel_bookings(session, availability):
-    query=select(tables.Bookings).where(tables.Bookings.availability_parent_id==availability.id)
+    query=select(tables.Booking).where(tables.Booking.availability_parent_id==availability.id)
     for booking in session.scalars(query):
         sub_query=select(tables.Availability).where(get_availabilities_in_range(booking.start_datetime, booking.end_datetime, common.fromStringList(booking.services), booking.buisness)).limit(1)
         new_availability=session.scalars(sub_query).first()
@@ -71,7 +72,7 @@ def check_for_conflict(session, start_datetime, end_datetime, buisness, booking_
     
     query=query=select(tables.Booking).where( (tables.Booking.buisness==buisness) & ((tables.Booking.start_datetime >= start_datetime) |  (tables.Booking.end_datetime <= end_datetime) ) & (tables.Booking.id != booking_id if booking_id is not None else true()) )
     
-    session.scalars(query).first() is not None
+    return session.scalars(query).first() is not None
           
 def get_availabilities_in_range(start_datetime, end_datetime, services, buisness=None):
     return tables.Availability.time_period_contains(start_datetime) & tables.Availability.time_period_contains(end_datetime) & or_(tables.Availability.has_service(service) for service in services) & (tables.Availability.author==buisness if buisness is not None else true())
