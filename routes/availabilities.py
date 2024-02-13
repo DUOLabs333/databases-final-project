@@ -1,6 +1,6 @@
-from utils import common, tables, users, jobs
+from utils import common, tables, users
 
-from utils import posts
+from utils import availabilities
 
 from utils.common import app
 
@@ -12,193 +12,74 @@ from sqlalchemy.orm import Session
 import base64, os, random, string
 import multiprocessing, json
 from pathlib import Path
+from datetime import datetime, time
 
 from flask import request, send_file, current_app, url_for, jsonify
 from werkzeug.utils import secure_filename
 
-@app.route("/posts/homepage")
-@common.authenticate
-def homepage():
-    result={}
-    limit=request.json.get("limit",50) or 50
-    before=request.json.get("before",0) or 0
-    
-    uid=request.json["uid"]
-    user=users.getUser(uid)
-    with Session(common.database) as session:
-                
-        query=select(tables.Post.id).where(user.has_followed(tables.Post.author) & not_(user.has_blocked(tables.Post.author)) & (tables.Post.type=="POST")).order_by(tables.Post.time_posted.desc()).offset(before).limit(limit) #Sort chronologically, not algorithmically --- one of the biggest problems with other social media sites
-        
-        result["posts"]=session.scalars(query).all()
-        result["before"]=before+len(result["posts"])
-        
-        return result
-        
-            
-@app.route("/posts/trending")
-@common.authenticate
-def trending():
-    result={}
-    
-    limit=request.json.get("limit",50)
-    before=request.json.get("before",0)
-    
-    uid=request.json["uid"]
-    with Session(common.database) as session:
-        result["posts"]=[]
-        
-        user=users.getUser(uid)
-        
-        query=select(tables.Post.id).where(not_(user.has_blocked(tables.Post.author)) & (tables.Post.is_trendy==True) ).order_by(desc(tables.Post.trendy_ranking)).offset(before).limit(limit)
-        
-        result["posts"]=session.scalars(query).all()
-        result["before"]=before+len(result["posts"])
-        
-        return result
+DATETIME_FORMAT="%Y-%m-%d %H:%M:%S.%f"
+UTC=ZoneInfo("UTC")
+day_to_num={"MONDAY":0, "TUESDAY":1, "WEDNESDAY":2, "THURSDAY":3, "FRIDAY":4, "SATURDAY":5, "SUNDAY":6}
+num_to_day=day_to_num.keys()
 
 
-@app.route("/posts/create")
+@app.route("/availabilities/create")
 @common.authenticate
 def create_post():
     result={}
     
     uid=request.json["uid"]
     user=users.getUser(uid)
-    if not user.hasType(user.ANON):
-        print(user.listTypes())
-        result["error"]="INSUFFICIENT_PERMISSION" #If not OU, can't post, dislike, like, etc.
-        return result
     
-    data=request.json
-    
-    #Get which words were added to title,post. create will delete post, edit will revert post (make rollback object)
-    
-    cost, error, data = posts.cleanPostData(None,data,user)
-    
-    if error!=None:
-        result["error"]=error
-        return result
+    with Session(common.database) as session:
+        availability=tables.Availability()
+        session.add(availability)
         
-    result["id"]=posts.createPost(data)
-    result["cost"]=cost
-    
+        availability.author=uid
+        assign_json_to_availability(availability, request.json)
+        session.commit()
+        
     return result
 
-@app.route("/posts/info")
-@common.authenticate
-def post_info():
+@app.route("/availabilities/info")
+def availability_info():
     result={}
     
-    uid=request.json["uid"]
-    user=users.getUser(uid)
     with Session(common.database) as session:
-        post=posts.getPost(request.json.get("id"),session=session)
+        availability=availabilities.getAvailability(request.json["id"],session=session)
         
-        if not post.is_viewable(user):
-            result["error"]="INSUFFICIENT_PERMISSION"
+        if availability is None:
+            result["error"]="NOT_FOUND"
             return result
-                
-        post.views+=1 #Someone looked at it
         
-        if post.type=="JOB":
-            return_value=jobs.charge_for_post(post,session)
-            if return_value==-1: #Out of money
-                result["error"]="APPLICATION_NOT_AVAILABLE"
-                post.views-=1
-                session.commit()
-                return result
-        session.commit()
-        users.getUser(post.author).update_trendy_status() #Event handler
-        session.commit()
+        timezone=ZoneInfo(request.json.get("timezone","UTC"))
         
-        if post is None:
-            result["error"]="POST_NOT_FOUND"
-            return result
-            
         for col in post.__mapper__.attrs.keys():
-            value=getattr(post,col)
-            
-            if col in ["keywords","videos","images"]:
+            value=getattr(availability,col)
+            if col=="id":
+                continue
+            elif col.endswith("_datetime"):
+                value=value.localize(timezone).strftime(DATETIME_FORMAT)
+            elif col.endswith("_time"):
+                value=value.localize(timezone).isoformat()
+            elif col=="days_supported":
+                value=[num_to_day[i] for i in range(len(num_to_day)) if value & (1 << i) != 0 ]
+            if col=="services":
                 value=common.fromStringList(value)
                 
             result[col]=value
-        
-        #Maybe add number of reports later?
-        
     return result
 
-@app.route("/posts/edit")
+@app.route("/availabilities/edit")
 @common.authenticate
-def post_edit():
-    result={}
+def availability_edit():     
+    return availabilities.availability_change(request, "edit")
     
-    uid=request.json["uid"]
-    user=users.getUser(uid)
-    if not user.hasType(user.ANON):
-        result["error"]="INSUFFICIENT_PERMISSION"
-        return result
-    
-        
-    with Session(common.database) as session:
-        post=posts.getPost(request.json["id"],session)
-        if post is None:
-            result["error"]="POST_DOES_NOT_EXIST"
-            return 
-        
-        data=request.json
-        cost, error, data=posts.cleanPostData(data["id"],data,user)
-        
-        if error!=None:
-            result["error"]=error
-            return result
-                
-        for field in post.editable_fields:
-            value=data.get(field,getattr(post,field)) #Get new value, otherwise, just get what was there before
-            if isinstance(value, list):
-                value=common.toStringList(value)
-                
-            setattr(post,field,value)
-            
-        session.commit(post)
-    
-    result["cost"]=cost        
-    return result
-    
-@app.route("/posts/delete")
+@app.route("/availabilities/delete")
 @common.authenticate
-def post_delete():
-    result={}
+def availability_delete():     
+    return availabilities.availability_change(request, "delete")
     
-    post_id=request.json.get("id",type=int)
-    
-    with Session(common.database) as session:
-        post=posts.getPost(post_id)
-        can_delete=False
-        
-        uid=request.json["uid"]
-        user=users.getUser(uid)
-        
-        if post.type=="INBOX":
-            can_delete=False
-        elif post.type=="COMMENT":
-            parent_post=posts.getPost(post.parent)
-            if parent_post.author==uid:
-                can_delete=True
-            
-        if post.author==uid:
-            can_delete=True
-            
-        if user.hasType(user.SUPER):
-            can_delete=True
-        
-        if not can_delete:
-            result["error"]="INSUFFICIENT_PERMISSION"
-            return result
-        else:
-            session.delete(post)
-            session.commit()
-            return result
-            
 @app.route("/posts/like")
 @common.authenticate
 def like_post():

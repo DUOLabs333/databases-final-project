@@ -5,7 +5,7 @@ from sqlalchemy.ext.hybrid import hybrid_method
 from utils import users, availabilities
 from sqlalchemy import select, literal, ForeignKey
 from sqlalchemy import not_, and_, or_, case
-from sqlalchemy.types import String
+from sqlalchemy.types import String, DateTime
 from datetime import datetime as Datetime
 from datetime import Time
 import datetime
@@ -23,8 +23,8 @@ class User(BaseTable):
     password_hash: Mapped[str]
     creation_time: Mapped[Datetime]
     profile: Mapped[str] = mapped_column(default="")
-    location_long: Mapped[float] = mapped_column(default=0)
-    location_lat: Mapped[float] = mapped_column(default=0)
+    address: Mapped[str] = mapped_column(default="")
+    zip_code: Mapped[str] = mapped_column(default="")
     avatar: Mapped[int] = mapped_column(nullable=True) #If not NULL, points to an index that points 
         
                 
@@ -32,19 +32,19 @@ class Message(BaseTable): #Holds administrative messages and notifications of pe
     __tablename__ = "MESSAGES"
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
     recipient: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
-    time_posted: Mapped[int]
+    time_posted: Mapped[Datetime]
     title: Mapped[str]
     text: Mapped[str]
 
 #See bookings by querying BOOKED, delete any availability of any type
-class Availabilities(BaseTable):
+class Availability(BaseTable):
     __tablename__ = "AVAILABILITIES"
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
     author: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
     available: Mapped[bool] = mapped_column(default=True) #False for blocked
-    start_datetime: Mapped[Datetime]
-    end_datetime: Mapped[Datetime] = mapped_column(default=datetime.max.localize(ZoneInfo("UTC")))
-    days_supported: Mapped[int] = mapped_column(default=2**8-1) #Bitstring of 7 bits
+    start_datetime: Mapped[Datetime] = mapped_column(__type=DateTime(timezone=True))
+    end_datetime: Mapped[Datetime] = mapped_column(__type=DateTime(timezone=True), default=datetime.max.replace(tzinfo=ZoneInfo("UTC")))
+    days_supported: Mapped[int] = mapped_column(default=2**7-1) #Bitstring of 7 bits
     start_time: Mapped[Time]
     end_time: Mapped[Time]
     repetition: Mapped[str] = mapped_column(default="ONETIME")
@@ -56,8 +56,8 @@ class Availabilities(BaseTable):
         return (self.start_datetime <= datetime) & (self.end_datetime >= datetime)
     
     @hybrid_method
-    def time_within_start_and_end(self, time): #We assume that start_time and end_time
-        return (self.start_time <= time) & (self.end_time >= time)
+    def time_within_start_and_end(self, datetime): #We assume that start_time and end_time
+        return (self.start_time <= datetime.time()) & (self.end_time >= datetime.time())
         
     @hybrid_method
     def day_of_week_is_supported(self, datetime):
@@ -106,15 +106,15 @@ class Availabilities(BaseTable):
                 
         
     @hybrid_method
-    def time_period_contains(self, datetime, time):
-        return self.date_within_start_and_end(datetime) & self.time_within_start_and_end(time) & self.on_the_right_day(datetime)
+    def time_period_contains(self, datetime):
+        return self.date_within_start_and_end(datetime) & self.time_within_start_and_end(datetime) & self.on_the_right_day(datetime)
     
     @hybrid_method
     def has_service(self, service):
         return f" {service} " in self.services
     
     @has_service.expression
-    def has_service(self, service)
+    def has_service(self, service):
         return self.services.contains(f" {service} ")
 
 class Booking(BaseTable):
@@ -122,11 +122,17 @@ class Booking(BaseTable):
     author: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
     buisness: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
     services: Mapped[str]
-    date: Mapped[Datetime]
-    start_time: Mapped[Time]
-    end_time: Mapped[Time]
+    start_datetime: Mapped[Datetime]
+    end_datetime: Mapped[Datetime]
+    availability_parent_id: Mapped[int] = mapped_column(ForeignKey("AVAILABILITIES.id"))
     code: Mapped[int] #Must be random
     
     #Later, if efficiency becomes a concern, we can add a modified time_period_contains here as is_within. However, that takes time, so I don't care right now
     
+
+class Upload(BaseTable):
+    __tablename__="UPLOADS"
     
+    id: Mapped[int]= mapped_column(primary_key=True,autoincrement=True)
+    path: Mapped[str]
+    type: Mapped[str]

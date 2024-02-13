@@ -67,7 +67,7 @@ def info():
     with Session(common.database) as session:
         user=users.getUser(id,session)
         if user is None:
-            result["error"]="USER_NOT_FOUND"
+            result["error"]="NOT_FOUND"
             return result
         for col in user.__mapper__.attrs.keys():
             if col in ["id", "password_hash"]:
