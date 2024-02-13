@@ -13,6 +13,7 @@ import pgeocode
 import os
 from pathlib import Path
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from werkzeug.utils import secure_filename
 
 DATETIME_FORMAT="%Y-%m-%d %H:%M:%S.%f"
@@ -129,12 +130,12 @@ def availability_search():
         
         return result
 
-media_folder = os.path.join(current_app.root_path,"static","media")
-
 @app.route("/upload")
 @common.authenticate
 def image_upload():
     result={}
+    
+    media_folder = os.path.join(current_app.root_path,"static","media")
     Path(media_folder).mkdir(parents=True,exist_ok=True)
     
     media = request.files.get['media']
@@ -163,6 +164,7 @@ def image():
     
     id=request.json["id"]
     
+    media_folder = os.path.join(current_app.root_path,"static","media")
     with Session(common.database) as session:
         type=session.scalars(select(tables.Upload.type).where(tables.Upload.id==id).limit(1)).first()
         

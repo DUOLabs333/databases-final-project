@@ -1,24 +1,19 @@
 from utils import common, tables, balance
-from utils.common import app, appendToStringList, removeFromStringList
+from utils.common import app
 
-from utils import users, posts
+from utils import users
 
 from flask import request
 
-from sqlalchemy import select, desc, not_
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 import multiprocessing
-import random, string,time, heapq, json
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 lock=multiprocessing.Lock() #We lock not because of the IDs (autoincrement is enough), but because of the usernames
 
 #Lock table when deleting, creating, and renaming
-
-def checkIfUsernameExists(username): #You must have the USERS database locked, and you must not unlock it until you placed the (new) username into the database
-    with Session(common.database) as session:
-        return session.scalars(select(tables.User.id).where(tables.User.username==username)).first() is not None
 
 #CRUD: Create, Read, Update, Delete
 
@@ -31,7 +26,7 @@ def create():
     
     username=data["username"]
     
-    if checkIfUsernameExists(username):
+    if users.checkIfUsernameExists(username):
         lock.release()
         result["error"]="USERNAME_EXISTS"
         return result
@@ -96,7 +91,7 @@ def modify():
                     return json
                 else:
                     lock.acquire()
-                    if checkIfUsernameExists(request.json[col]):
+                    if users.checkIfUsernameExists(request.json[col]):
                         result["error"]="NAME_ALREADY_TAKEN"
                         lock.release()
                         return result

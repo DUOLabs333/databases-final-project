@@ -7,7 +7,7 @@ from sqlalchemy import select, literal, ForeignKey
 from sqlalchemy import not_, and_, or_, case
 from sqlalchemy.types import String, DateTime
 from datetime import datetime as Datetime
-from datetime import Time
+from datetime import time as Time
 import datetime
 from zoneinfo import ZoneInfo
 
@@ -42,8 +42,8 @@ class Availability(BaseTable):
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
     author: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
     available: Mapped[bool] = mapped_column(default=True) #False for blocked
-    start_datetime: Mapped[Datetime] = mapped_column(__type=DateTime(timezone=True))
-    end_datetime: Mapped[Datetime] = mapped_column(__type=DateTime(timezone=True), default=datetime.max.replace(tzinfo=ZoneInfo("UTC")))
+    start_datetime: Mapped[Datetime] = mapped_column(DateTime(timezone=True))
+    end_datetime: Mapped[Datetime] = mapped_column(DateTime(timezone=True), default=datetime.datetime.max.replace(tzinfo=ZoneInfo("UTC")))
     days_supported: Mapped[int] = mapped_column(default=2**7-1) #Bitstring of 7 bits
     start_time: Mapped[Time]
     end_time: Mapped[Time]
@@ -118,6 +118,8 @@ class Availability(BaseTable):
         return self.services.contains(f" {service} ")
 
 class Booking(BaseTable):
+    __tablename__ = "BOOKINGS"
+    
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
     author: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
     buisness: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
