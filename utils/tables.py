@@ -2,10 +2,8 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.ext.hybrid import hybrid_method
-from utils import users, availabilities
-from sqlalchemy import select, literal, ForeignKey
-from sqlalchemy import not_, and_, or_, case
-from sqlalchemy.types import String, DateTime
+from sqlalchemy import ForeignKey, case
+from sqlalchemy.types import DateTime
 from datetime import datetime as Datetime
 from datetime import time as Time
 import datetime

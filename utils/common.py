@@ -4,10 +4,10 @@ import sys,os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..")))
 
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import Session
+from sqlalchemy import create_engine, select, Session
 from flask import Flask, request
 from flask_cors import CORS
+from zoneinfo import ZoneInfo
 
 database = create_engine("sqlite:///test_db.db")
 
@@ -49,15 +49,8 @@ def fromStringList(string):
 def toStringList(lst):
     return "" if lst==[] else " "+(" ".join(lst))+" "
 
-def appendToStringList(lst,val):
-    lst=fromStringList(lst)
-    lst.append(str(val))
-    return toStringList(lst)
-
-def removeFromStringList(lst,val):
-    lst=fromStringList(lst)
-    lst.remove(str(val))
-    return toStringList(lst)
+UTC=ZoneInfo("UTC")
+DATETIME_FORMAT="%Y-%m-%d %H:%M:%S.%f"
  
 def authenticate(func): #There is a possible race-condition with two etc. /likes, where two different processes will be working on two different lists, and write two lists. The only way to do this is with dynamic Locks (one for each user) --- Subclass defaultdict to only delete when the lock's.__acquires<=0. Subclass Lock to keep track of __acquires. It doesn't totally eliminate race conditions, but it lowers the chance significantly. However, this isn't a thing in Python (Locks are gained through inheritance). Other languages like Go do not have this issue (they use threading, so sharing memory is easy).
    @functools.wraps(func)

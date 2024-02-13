@@ -4,10 +4,9 @@ from utils import common, tables
 from utils.common import app
 from utils import bookings
 from flask import request
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import select, Session
 from datetime import datetime
-from timezone import ZoneInfo
+from zoneinfo import ZoneInfo
 import timezone
 import random
 
@@ -38,21 +37,22 @@ def create_booking():
 def booking_info():
     result={}
     
+    uid=request.json["uid"]
     with Session(common.database) as session:
         booking=bookings.getBooking(request.json["id"],session=session)
         
-        if request.json["uid"] not in [booking.author, booking.buisness]:
+        if uid not in [booking.author, booking.buisness]:
             result["error"]="INSUFFICIENT_PERMISSION"
             return result
         
         timezone=ZoneInfo(request.json.get("timezone","UTC"))
         
-        for col in post.__mapper__.attrs.keys():
-            value=getattr(availability,col)
+        for col in booking.__mapper__.attrs.keys():
+            value=getattr(booking,col)
             if col=="id":
                 continue
             elif col.endswith("_datetime"):
-                value=value.localize(timezone).strftime(DATETIME_FORMAT)
+                value=value.localize(timezone).strftime(common.DATETIME_FORMAT)
             if col=="services":
                 value=common.fromStringList(value)
                 
@@ -70,7 +70,7 @@ def booking_edit():
         if booking is None:
             result["error"]="DOES_NOT_EXIST"
             return result
-        elif uid!=booking.author:
+        elif request.json["uid"]!=booking.author:
              result["error"]="INSUFFICIENT_PERMISSION"
              return result
         
@@ -87,6 +87,8 @@ def booking_edit():
 @common.authenticate
 def booking_cancel():
     result = {}
+    
+    uid=request.json["uid"]
     
     with Session(common.database) as session:
         booking=bookings.getBooking(request.json["id"],session=session)
@@ -117,7 +119,7 @@ def booking_list():
     
     uid=request.json["uid"]
     with Session(common.database) as session:
-        query=select(table.Booking.id).where(table.Booking.id==uid | table.Booking.buisness==uid)
+        query=select(tables.Booking.id).where(tables.Booking.id==uid | tables.Booking.buisness==uid)
         
         result["bookings"]=list(session.scalars(query).all())
         return result
@@ -140,7 +142,7 @@ def booking_checkout():
         
         checkout_message=tables.Message()
         checkout_message.recipient=booking.author
-        checkout_message.time_posted=datetime.now(UTC)
+        checkout_message.time_posted=datetime.now(common.UTC)
         checkout_message.title="Your appointment is over"
         checkout_message.text=f"The buisness{booking.buisness} has marked your booking {booking.id} as over. Thank you for using us!"
         

@@ -1,25 +1,19 @@
-from utils import common, tables, users
-
-from utils import availabilities
+from utils import common, tables
 
 from utils.common import app
 
-from flask import request, send_file, current_app
-from sqlalchemy import select
+from utils import availabilities
 
-from sqlalchemy.orm import Session
+from flask import request, send_file, current_app
+from sqlalchemy import select, Session, tuple_
 import pgeocode
 
 import os
 from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from werkzeug.utils import secure_filename
 
-DATETIME_FORMAT="%Y-%m-%d %H:%M:%S.%f"
-UTC=ZoneInfo("UTC")
-day_to_num={"MONDAY":0, "TUESDAY":1, "WEDNESDAY":2, "THURSDAY":3, "FRIDAY":4, "SATURDAY":5, "SUNDAY":6}
-num_to_day=day_to_num.keys()
+NUM_TO_DAY=availabilities.DAY_TO_NUM.keys()
 
 
 @app.route("/availabilities/create")
@@ -37,7 +31,7 @@ def create_post():
         availabilities.assign_json_to_availability(availability, request.json)
         
         if availability.available==False: #A block
-            cancel_all_blocked_bookings(session, availability)
+            availabilities.cancel_all_blocked_bookings(session, availability)
             
         session.commit()
         
@@ -56,16 +50,16 @@ def availability_info():
         
         timezone=ZoneInfo(request.json.get("timezone","UTC"))
         
-        for col in post.__mapper__.attrs.keys():
+        for col in availability.__mapper__.attrs.keys():
             value=getattr(availability,col)
             if col=="id":
                 continue
             elif col.endswith("_datetime"):
-                value=value.localize(timezone).strftime(DATETIME_FORMAT)
+                value=value.localize(timezone).strftime(common.DATETIME_FORMAT)
             elif col.endswith("_time"):
                 value=value.localize(timezone).isoformat()
             elif col=="days_supported":
-                value=[num_to_day[i] for i in range(len(num_to_day)) if value & (1 << i) != 0 ]
+                value=[NUM_TO_DAY[i] for i in range(len(NUM_TO_DAY)) if value & (1 << i) != 0 ]
             if col=="services":
                 value=common.fromStringList(value)
                 
@@ -86,11 +80,14 @@ dist = pgeocode.GeoDistance('US')
 
 @app.route("/availabilities/search")
 def availability_search():
+    
+    result={}
+    
     timezone=ZoneInfo(request.json.get("timezone","UTC"))
     
-    start_datetime=datetime.strptime(request.json["start_datetime"], DATETIME_FORMAT).replace(tzinfo=timezone).localize(UTC)
+    start_datetime=datetime.strptime(request.json["start_datetime"], common.DATETIME_FORMAT).replace(tzinfo=timezone).localize(common.UTC)
     
-    end_datetime=datetime.strptime(request.json["end_datetime"], DATETIME_FORMAT).replace(tzinfo=timezone).localize(UTC)
+    end_datetime=datetime.strptime(request.json["end_datetime"], common.DATETIME_FORMAT).replace(tzinfo=timezone).localize(common.UTC)
     
     services=request.json["services"]
     
@@ -101,7 +98,7 @@ def availability_search():
     length=request.json.get("length", 50)
     
     with Session(common.database) as session:
-        query=select(tuple_(tables.Availability.author, tables.User.zip_code).distinct()).join(tables.User, tables.Availability.author==tables.User.id).where(get_availabilities_in_range(session, start_datetime, end_datetime, services))
+        query=select(tuple_(tables.Availability.author, tables.User.zip_code).distinct()).join(tables.User, tables.Availability.author==tables.User.id).where(availabilities.get_availabilities_in_range(session, start_datetime, end_datetime, services))
         
         rows=[]
          

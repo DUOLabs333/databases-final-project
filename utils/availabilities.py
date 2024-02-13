@@ -1,12 +1,15 @@
 import utils.common as common
 import utils.tables as tables
-from sqlalchemy import or_, true
+from sqlalchemy import or_, true, select, Session
 from datetime import datetime, time
+from zoneinfo import ZoneInfo
+
+DAY_TO_NUM={"MONDAY":0, "TUESDAY":1, "WEDNESDAY":2, "THURSDAY":3, "FRIDAY":4, "SATURDAY":5, "SUNDAY":6}
 
 def getAvailability(availability_id,session=None):
     return common.getItem(tables.Availability,availability_id,session)
 
-def assign_json_to_availability(availabilitiy, data):
+def assign_json_to_availability(availability, data):
     timezone=ZoneInfo(data.get("timezone","UTC"))
     for col in availability.__mapper__.attrs.keys():
         if col in data:
@@ -17,14 +20,14 @@ def assign_json_to_availability(availabilitiy, data):
         if col in ["id","author"]:
             continue
         if col.endswith("_datetime"):
-            value=datetime.strptime(value, DATETIME_FORMAT).replace(tzinfo=timezone).localize(UTC)
+            value=datetime.strptime(value, common.DATETIME_FORMAT).replace(tzinfo=timezone).localize(common.UTC)
         elif col.endswith("_time"):
-            value=time.fromisoformat(value).replace(tzinfo=timezone).localize(UTC)
+            value=time.fromisoformat(value).replace(tzinfo=timezone).localize(common.UTC)
         elif col=="days_supported":
             bitstring=0
             
             for day in value:
-                bitstring |= (1 << day_to_num[day])
+                bitstring |= (1 << DAY_TO_NUM[day])
             
             value=bitstring
         elif col=="services":
@@ -33,21 +36,21 @@ def assign_json_to_availability(availabilitiy, data):
         setattr(availability,col,value)
         
 def reassign_or_cancel_bookings(session, availability):
-    query=select(table.Bookings).where(tables.Bookings.availability_parent_id==availability.id)
+    query=select(tables.Bookings).where(tables.Bookings.availability_parent_id==availability.id)
     for booking in session.scalars(query):
-        sub_query=select(tables.Availability).where(get_availabilities_in_range(booking.start_datetime, booking.end_datetime, common.fromStringList(booking.services), buisness)).limit(1)
-        availability=session.scalars(sub_query).first()
+        sub_query=select(tables.Availability).where(get_availabilities_in_range(booking.start_datetime, booking.end_datetime, common.fromStringList(booking.services), booking.buisness)).limit(1)
+        new_availability=session.scalars(sub_query).first()
         
         
-        if (availability is not None) and (not check_for_conflict(session, booking.start_datetime, booking.end_datetime, booking.buisness)):
-            booking.availability_parent_id=availability.id
+        if (new_availability is not None) and (not check_for_conflict(session, booking.start_datetime, booking.end_datetime, booking.buisness)):
+            booking.availability_parent_id=new_availability.id
         else:
             cancel_booking(session, booking)
 
 def cancel_booking(session, booking):
     cancel_message=tables.Message()
     cancel_message.recipient=booking.author
-    cancel_message.time_posted=datetime.now(UTC)
+    cancel_message.time_posted=datetime.now(common.UTC)
     cancel_message.title="Your booking got cancelled"
     cancel_message.text=f"Your booking {booking.id} got cancelled, as the buisness {booking.buisness} moved one of its availabilities out of the range. That's all we know."
     
@@ -79,7 +82,7 @@ def availability_change(request, method):
     uid=request.json["uid"]
         
     with Session(common.database) as session:
-        availability=availabilities.getAvailability(request.get["id"], session)
+        availability=getAvailability(request.get["id"], session)
         
         if availability is None:
             result["error"]="DOES_NOT_EXIST"
@@ -89,14 +92,14 @@ def availability_change(request, method):
              return result
         
         if method=="edit":
-            availabilities.assign_json_to_availability(availability, request.json)
+            assign_json_to_availability(availability, request.json)
         elif method=="delete":
             session.delete(availability)
         
         session.commit()
         
         if availability.available:
-            availabilities.reassign_or_cancel_bookings(session,availability)
+            reassign_or_cancel_bookings(session,availability)
         else:
             cancel_all_blocked_bookings(session, availability)
         
