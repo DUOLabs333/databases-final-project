@@ -46,7 +46,7 @@ class Availability(BaseTable):
     start_time: Mapped[Time]
     end_time: Mapped[Time]
     repetition: Mapped[str] = mapped_column(default="ONETIME")
-    services: Mapped[str] = mapped_column(default="")
+    services: Mapped[str] = mapped_column(default="") #A,B C,D
     
     
     @hybrid_method

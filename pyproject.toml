@@ -10,6 +10,7 @@ dependencies = [
     "sqlalchemy>=2.0.22",
     "Flask-CORS>=4.0.0",
     "pgeocode>=0.4.1",
+    "Faker>=24.1.0",
 ]
 requires-python = ">=3.9"
 readme = "README.md"
