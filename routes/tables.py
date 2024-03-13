@@ -91,4 +91,18 @@ def populate():
             session.add(booking)
         
         session.commit()
+    return result
+
+@app.route("/tables/drop")
+def populate():
+    result={}
     
+    uid=request.json["uid"]
+    if uid!=0:
+        result["error"]="INSUFFICIENT_PERMISSION"
+        return result
+    
+    with Session(common.database) as session:
+        tables.User.metadata.drop_all()
+        session.commit()
+    return result
