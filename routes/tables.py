@@ -68,6 +68,7 @@ def populate():
             availability.id=faker.unique.pyint()
             availabilities_list.append(availability.id)
             
+            availability.available=faker.pybool()
             availability.author=faker.random_element(elements=users_list)
             availability.start_datetime=faker.date_time(tzinfo=UTC)
             availability.end_datetime=faker.date_time_between(start_date=availability.start_datetime, end_date=MAX_DATETIME)
