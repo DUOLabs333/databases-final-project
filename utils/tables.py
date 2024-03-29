@@ -2,7 +2,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.ext.hybrid import hybrid_method
-from sqlalchemy import ForeignKey, case
+from sqlalchemy import ForeignKey, case, true
 from sqlalchemy.types import DateTime
 from datetime import datetime as Datetime
 from datetime import time as Time
@@ -46,7 +46,6 @@ class Availability(BaseTable):
     start_time: Mapped[Time]
     end_time: Mapped[Time]
     repetition: Mapped[str] = mapped_column(default="ONETIME")
-    services: Mapped[str] = mapped_column(default="") #A,B C,D
     
     
     @hybrid_method
@@ -107,29 +106,45 @@ class Availability(BaseTable):
     def time_period_contains(self, datetime):
         return self.date_within_start_and_end(datetime) & self.time_within_start_and_end(datetime) & self.on_the_right_day(datetime)
     
+    def has_service_expression(self, service):
+        services_clause= true()
+        for key in service:
+            services_clause &= (getattr(Service,key)==service[key]) #service is a dictionary with keys that match the columns in the Service table
+
+        return (select(Service.id).join_from(Availability_to_Service, Service, isouter=True).where(availability==self.id & services_clause)).exists()
+
     @hybrid_method
     def has_service(self, service):
-        return f" {service} " in self.services
+        with Session(common.database) as session:
+            return session.scalars(self.has_service_expression(service)).first() # Will return True or False
     
     @has_service.expression
     def has_service(self, service):
-        return self.services.contains(f" {service} ")
+        return self.has_service_expression(service)
 
 class Booking(BaseTable):
     __tablename__ = "BOOKINGS"
     
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
     author: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
-    buisness: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
-    services: Mapped[str]
+    availability_to_service: Mapped[int] = mapped_column(ForeignKey("AVAILABILITY_TO_SERVICE.id"))
     start_datetime: Mapped[Datetime]
     end_datetime: Mapped[Datetime]
-    availability_parent_id: Mapped[int] = mapped_column(ForeignKey("AVAILABILITIES.id"))
     code: Mapped[int] #Must be random
     
     #Later, if efficiency becomes a concern, we can add a modified time_period_contains here as is_within. However, that takes time, so I don't care right now
     
+class Service(BaseTable):
+   __tablename__="SERVICES"
+   id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
+   price: Mapped[float]
+   device: Mapped[str]=mapped_column(nullable=True)
+   device_repair: Mapped[str]=mapped_column(nullable=True)
 
+   vehicle: Mapped[str]=mapped_column(nullable=True)
+   vehicle_service: Mapped[str]=mapped_column(nullable=True)
+
+class Availability_to_Service(BaseTab
 class Upload(BaseTable):
     __tablename__="UPLOADS"
     
