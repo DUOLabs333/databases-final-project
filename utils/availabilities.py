@@ -22,7 +22,7 @@ def assign_json_to_availability(availability, data):
             continue
         if col.endswith("_datetime"):
             value=datetime.strptime(value, common.DATETIME_FORMAT).replace(tzinfo=timezone).localize(common.UTC)
-        elif col.endswith("_time"):
+        elif col.endswith("_time"): 
             value=time.fromisoformat(value).replace(tzinfo=timezone).localize(common.UTC)
         elif col=="days_supported":
             bitstring=0
@@ -32,18 +32,40 @@ def assign_json_to_availability(availability, data):
             
             value=bitstring
         elif col=="services":
-            value=common.toStringList(value)
+            with Session(common.database) as session:
+                query=select(tables.Availability_to_Service.service).where(tables.Availability_to_Service.service==availability.id)
+                old_services=set(session.scalars(query).all()) #The existing services attached to the availability
+                new_services=set(value) #What services should be attached to the availability
+
+                to_be_added=new_services-old_services
+                to_be_deleted=old_services - new_services
+
+                for service in to_be_added:
+                    row=tables.Availability_to_Service()
+                    row.availability=availability.id
+                    row.service=service
+                    session.add(row)
+
+                for service in to_be_deleted:
+                    query=select(tables.Availability_to_Service).where(tables.Availability_to_Service.availability==availability.id & tables.Availability_to_Service.service==service)
+                    for row in session.scalars(query):
+                        session.delete(row)
+
+                session.commit()
             
         setattr(availability,col,value)
         
 def reassign_or_cancel_bookings(session, availability):
-    query=select(tables.Booking).where(tables.Booking.availability_parent_id==availability.id)
+    query=select(tables.Booking).join_from(tables.Booking, tables.Availability_to_Service, tables.Booking.availability_to_service==tables.Availability_to_Service.id).where(tables.Availability_to_Service.availability==availability.id)
+    
     for booking in session.scalars(query):
-        sub_query=select(tables.Availability).where(get_availabilities_in_range(booking.start_datetime, booking.end_datetime, common.fromStringList(booking.services), booking.buisness)).limit(1)
+        services=session.scalars(select(tables.Service).join_from(tables.Availability_to_Service, tables.Service, tables.Availability_to_Service.service==tables.Service.id).where(tables.Availability_to_Service.id==booking.availability_to_service)).first().services_dict
+
+        sub_query=select(tables.Availability).where(get_availabilities_in_range(booking.start_datetime, booking.end_datetime, services, availability.buisness)).limit(1)
         new_availability=session.scalars(sub_query).first()
         
         
-        if (new_availability is not None) and (not check_for_conflict(session, booking.start_datetime, booking.end_datetime, booking.buisness)):
+        if (new_availability is not None) and (not check_for_conflict(session, booking.start_datetime, booking.end_datetime, availability.buisness)):
             booking.availability_parent_id=new_availability.id
         else:
             cancel_booking(session, booking)

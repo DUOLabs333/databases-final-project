@@ -27,6 +27,8 @@ def create_post():
     with Session(common.database) as session:
         availability=tables.Availability()
         session.add(availability)
+
+        session.commit() #So we can get an id
         
         availability.author=uid
         availabilities.assign_json_to_availability(availability, request.json)

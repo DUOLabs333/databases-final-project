@@ -38,7 +38,8 @@ class Message(BaseTable): #Holds administrative messages and notifications of pe
 class Availability(BaseTable):
     __tablename__ = "AVAILABILITIES"
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
-    author: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
+    buisness: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
+
     available: Mapped[bool] = mapped_column(default=True) #False for blocked
     start_datetime: Mapped[Datetime] = mapped_column(DateTime(timezone=True))
     end_datetime: Mapped[Datetime] = mapped_column(DateTime(timezone=True), default=datetime.datetime.max.replace(tzinfo=ZoneInfo("UTC")))
@@ -75,7 +76,7 @@ class Availability(BaseTable):
         else:
             on_supported_weekday=self.day_of_week_is_supported(datetime)
             in_the_same_week=self.in_the_same_week(datetime)
-            
+ 
             if self.repetition=="WEEKLY":
                 return on_supported_weekday
             elif self.repetition=="MONTHLY":
@@ -111,7 +112,7 @@ class Availability(BaseTable):
         for key in service:
             services_clause &= (getattr(Service,key)==service[key]) #service is a dictionary with keys that match the columns in the Service table
 
-        return (select(Service.id).join_from(Availability_to_Service, Service, isouter=True).where(availability==self.id & services_clause)).exists()
+        return (select(Service.id).join_from(Availability_to_Service, Service, Availability_to_Service.service==Service.id, isouter=True).where(availability==self.id & services_clause)).exists()
 
     @hybrid_method
     def has_service(self, service):
@@ -126,27 +127,54 @@ class Booking(BaseTable):
     __tablename__ = "BOOKINGS"
     
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
-    author: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
+    author: Mapped[int]
     availability_to_service: Mapped[int] = mapped_column(ForeignKey("AVAILABILITY_TO_SERVICE.id"))
     start_datetime: Mapped[Datetime]
     end_datetime: Mapped[Datetime]
     code: Mapped[int] #Must be random
     
     #Later, if efficiency becomes a concern, we can add a modified time_period_contains here as is_within. However, that takes time, so I don't care right now
-    
+
 class Service(BaseTable):
    __tablename__="SERVICES"
    id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
    price: Mapped[float]
+
    device: Mapped[str]=mapped_column(nullable=True)
    device_repair: Mapped[str]=mapped_column(nullable=True)
 
    vehicle: Mapped[str]=mapped_column(nullable=True)
    vehicle_service: Mapped[str]=mapped_column(nullable=True)
 
-class Availability_to_Service(BaseTab
+   @property
+   def services_dict(self): #Return dict of properties of service, remove id
+        result={}
+        for col in inspect(Service).attrs:
+            key=col.key
+            if key=="id":
+                continue
+            else:
+                result[key]=getattr(self,key)
+
+        return result
+
+
+class Availability_to_Service(BaseTable):
+    __tablename__= "AVAILABILITY_TO_SERVICE"
+    id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
+    availability: Mapped[int] = mapped_column(ForeignKey("AVAILABILITIES.id"))
+    service: Mapped[int] = mapped_column(ForeignKey("SERVICES.id"))
+
+class Transaction(BaseTable):
+    __tablename__= "TRANSACTIONS"
+    id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
+    booking: Mapped[int] = mapped_column(ForeignKey("BOOKINGS.id"))
+    method: Mapped[str]
+    status: Mapped[str] = mapped_column(default="Initiated")
+    timestamp: Mapped[Datetime]
+
 class Upload(BaseTable):
     __tablename__="UPLOADS"
     
     id: Mapped[int]= mapped_column(primary_key=True,autoincrement=True)
-    type: Mapped[str]
+    type: Mapped[str] #Filetype
