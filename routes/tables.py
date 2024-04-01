@@ -16,7 +16,8 @@ REPETITIONS=["ONETIME","DAILY", "WEEKLY", "MONTHLY", "YEARLY"]
 DEVICES=["IPHONE", "IPAD", "MACBOOK", "PIXEL", "HTC", "SAMSUNG", "XIAOMI"] #We can get more specific later
 REPAIRS=["SCREEN_REPAIR", "CAMERA_REPAIR", "BATTERY_REPLACEMENT"]
 
-SERVICES=[",".join(_) for _ in itertools.product(DEVICES, REPAIRS)]
+VEHICLES=["TOYOTA", "BMW", "VOLKSWAGEN"]
+SERVICES=["DETAILING", "GENERAL_WASH","BRAKE_FLUID"]
 
 @app.route("/tables/populate")
 def populate():
@@ -36,10 +37,11 @@ def populate():
         session.add(user)
         
         users_list=[0]
-        
-        #Make sure appointments don't have end_datetime that is before start_datetime
-        #Get services from a predefined list --- in format "DEVICE,SERVICE "...
-        for i in range(NUM_ROWS):
+        availabilities_list=[]
+        services_list=[]
+        availability_to_service_list=[]
+
+        for i in range(NUM_ROWS): #Technically, each table population procedure should be in its own loop --- otherwise, the probability distributions of foreign keys like availability.buisness is not uniform, but are biased towards the first ids created   
             user=tables.User()
             
             user.id=faker.unique.pyint(min_value=1)
@@ -62,7 +64,6 @@ def populate():
             
             session.add(message)
             
-            availabilities_list=[]
             availability=tables.Availability()
             
             availability.id=faker.unique.pyint()
@@ -80,17 +81,37 @@ def populate():
             
             session.add(availability)
             
+            service=tables.Service()
+            service.id=faker.unique.pyint()
+            services_list.append(service.id)
+            service.price=faker.pyfloat()
+            is_repair=faker.random_bool()
+            if is_repair:
+                service.device=faker.random_element(elements=DEVICES)
+                service.repair=faker.random_element(elements=REPAIRS)
+            else:
+                service.vehicle=faker.random_element(elements=VEHICLES)
+                service.vehicle_service=faker.random_element(elements=SERVICES)
+            session.add(service)
+
+            availability_to_service=tables.Availability_to_Service()
+            availability_to_service.id=faker.unique.pyint()
+            availability_to_service_list.append(availability_to_service.id)
+            availability_to_service.availability=faker.random_element(elements=availabilities_list)
+            availability_to_service.service=faker.random_element(elements=services_list)
+            session.add(availability_to_service)
+
             booking=tables.Booking()
             booking.author=faker.random_element(elements=users_list)
-            booking.buisness=faker.random_element(elements=users_list)
-            booking.services=faker.random_element(elements=SERVICES)
+            
+            booking.availability_to_service=faker.random_element(elements=availability_to_service_list)
             booking.start_datetime=faker.date_time(tzinfo=UTC)
             booking.end_datetime=faker.date_time_between(start_date=booking.start_datetime, end_date=MAX_DATETIME)
-            booking.availability_parent_id=faker.random_element(elements=availabilities_list)
             booking.code=faker.unique.pyint(maxint=1000000)
             
             session.add(booking)
         
+        #We don't populate the Transactions or Uploads tables currently
         session.commit()
     return result
 

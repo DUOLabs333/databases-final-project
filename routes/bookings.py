@@ -26,6 +26,7 @@ def create_booking():
         if ret==-1:
             session.remove(booking)
             result["error"]="BLOCKED"
+            return result
         
         bookings.code=random.randint(10000,10000000)
         session.commit()
@@ -41,6 +42,8 @@ def booking_info():
     with Session(common.database) as session:
         booking=bookings.getBooking(request.json["id"],session=session)
         
+        availability_to_service=session.get(tables.Availability_to_Service, booking.availability_to_service)
+                                
         if uid not in [booking.author, booking.buisness]:
             result["error"]="INSUFFICIENT_PERMISSION"
             return result
@@ -49,14 +52,17 @@ def booking_info():
         
         for col in booking.__mapper__.attrs.keys():
             value=getattr(booking,col)
-            if col=="id":
+            if col in ["id","buisness"]:
                 continue
             elif col.endswith("_datetime"):
                 value=value.localize(timezone).strftime(common.DATETIME_FORMAT)
-            if col=="services":
-                value=common.fromStringList(value)
                 
             result[col]=value
+        
+
+        result["availability"]=availability_to_service.availability
+        result["service"]=availability_to_service.service
+
     return result
 
 @app.route("/bookings/edit")
@@ -124,7 +130,7 @@ def booking_list():
         result["bookings"]=list(session.scalars(query).all())
         return result
 
-@app.route("/bookings/checkout") #When the appointment is over (the code is still used by the customer to authenticate themselves to the buisness when they first walk-in
+@app.route("/bookings/checkout") #When the appointment is over (the code is still used by the customer to authenticate themselves to the buisness when they first walk-in)
 @common.authenticate
 def booking_checkout():
     result = {}
@@ -144,7 +150,7 @@ def booking_checkout():
         checkout_message.recipient=booking.author
         checkout_message.time_posted=datetime.now(common.UTC)
         checkout_message.title="Your appointment is over"
-        checkout_message.text=f"The buisness{booking.buisness} has marked your booking {booking.id} as over. Thank you for using us!"
+        checkout_message.text=f"The buisness {booking.buisness} has marked your booking {booking.id} as over. Thank you for using us!"
         
         session.delete(booking)
         session.add(checkout_message)

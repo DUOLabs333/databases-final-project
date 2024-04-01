@@ -133,11 +133,25 @@ class Booking(BaseTable):
     end_datetime: Mapped[Datetime]
     code: Mapped[int] #Must be random
     
+    def buisness_expression(self):
+        return select(Availability.buisness).join_from(Availability_to_Service, Availability, Availability_to_Service.availability==Availability.id).where(Availability_to_Service.id==self.availability_to_service).limit(1)
+
+    @hybrid_property
+    def buisness(self):
+        with Session(common.database) as session:
+            return session.scalars(self.buisness_expression()).first()
+
+    @hybrid_property.expression
+    def buisness(self):
+        return self.buisness_expression().scalar_subquery()
+
+    
     #Later, if efficiency becomes a concern, we can add a modified time_period_contains here as is_within. However, that takes time, so I don't care right now
 
 class Service(BaseTable):
    __tablename__="SERVICES"
    id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
+   buisness: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
    price: Mapped[float]
 
    device: Mapped[str]=mapped_column(nullable=True)
@@ -162,8 +176,8 @@ class Service(BaseTable):
 class Availability_to_Service(BaseTable):
     __tablename__= "AVAILABILITY_TO_SERVICE"
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
-    availability: Mapped[int] = mapped_column(ForeignKey("AVAILABILITIES.id"))
-    service: Mapped[int] = mapped_column(ForeignKey("SERVICES.id"))
+    availability: Mapped[int] = mapped_column(ForeignKey("AVAILABILITIES.id"), ondelete="CASCADE")
+    service: Mapped[int] = mapped_column(ForeignKey("SERVICES.id"), ondelete="CASCADE")
 
 class Transaction(BaseTable):
     __tablename__= "TRANSACTIONS"

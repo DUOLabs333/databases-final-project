@@ -32,11 +32,11 @@ def create_post():
         
         availability.author=uid
         availabilities.assign_json_to_availability(availability, request.json)
-        
-        if availability.available==False: #A block
-            availabilities.cancel_all_blocked_bookings(session, availability)
-            
+                    
         session.commit()
+
+        if availability.available==False: #A block
+            availabilities.reassign_or_cancel_bookings(session, availability)
         
     return result
 
@@ -64,7 +64,8 @@ def availability_info():
             elif col=="days_supported":
                 value=[NUM_TO_DAY[i] for i in range(len(NUM_TO_DAY)) if value & (1 << i) != 0 ]
             if col=="services":
-                value=common.fromStringList(value)
+                query=select(tables.Availability_to_Service.service).where(tables.Availability_to_Service.availability==availability.id)
+                value=session.scalars(query).all()
                 
             result[col]=value
     return result
@@ -101,7 +102,7 @@ def availability_search():
     length=request.json.get("length", 50)
     
     with Session(common.database) as session:
-        query=select(tuple_(tables.Availability.author, tables.User.zip_code).distinct()).join(tables.User, tables.Availability.author==tables.User.id).where(availabilities.get_availabilities_in_range(session, start_datetime, end_datetime, services))
+        query=select(tuple_(tables.Availability.buisness, tables.User.zip_code).distinct()).join(tables.User, tables.Availability.author==tables.User.id).where(availabilities.get_availabilities_in_range(session, start_datetime, end_datetime, services))
         
         rows=[]
          
@@ -111,7 +112,7 @@ def availability_search():
                 return result
                 
             if zip_code is None:
-                rows.append((row[0], 0))
+                rows.append((row[0], 0)) #Assume that the distance is 0
             else:
                 rows.append((row[0], dist.query_postal_code(zip_code, row[1])))
         

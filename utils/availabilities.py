@@ -71,21 +71,18 @@ def reassign_or_cancel_bookings(session, availability): #Handle all bookings tha
         else:
             cancel_booking(session, booking) #No way to keep the booking
 
-def cancel_booking(session, booking):
-    availability_to_service=session.get(tables.Availability_to_Service, booking.availability_to_service)
-    availability=session.get(tables.Availability, availability_to_service.availability)
-    service=session.get(tables.Service, availability_to_service.service)                                                            
+def cancel_booking(session, booking):                                                            
     cancel_message=tables.Message()
     cancel_message.recipient=booking.author
     cancel_message.time_posted=datetime.now(common.UTC)
     cancel_message.title="Your booking got cancelled"
-    cancel_message.text=f"Your booking {booking.id} got cancelled, as the buisness {availability.buisness} moved one of its availabilities out of the range. That's all we know."
+    cancel_message.text=f"Your booking {booking.id} got cancelled, as the buisness {booking.buisness} moved one of its availabilities out of the range. That's all we know."
     
     session.delete(booking)
     session.add(cancel_message)
 
 def cancel_all_blocked_bookings(session, block): #Cancel all bookings that conflict with block
-    query=select(tables.Booking).join(tables.Availability_to_Service, tables.Availability_to_Service.id==tables.Booking.availability_to_service).join(tables.Availability, tables.Availability.id==tables.Availability_to_Service.availability).where((tables.Availability.buisness==block.buisness) & ((tables.Booking.start_datetime >= block.start_datetime) |  (tables.Booking.end_datetime <= block.end_datetime) ) ) #Coarse filter --- neccessary but not sufficient condition (also lets me avoid remaking all of the availability-matching code)
+    query=select(tables.Booking).where((tables.Booking.buisness==block.buisness) & ((tables.Booking.start_datetime >= block.start_datetime) |  (tables.Booking.end_datetime <= block.end_datetime) ) ) #Coarse filter --- neccessary but not sufficient condition (also lets me avoid remaking all of the availability-matching code)
     
     for booking in session.scalars(query).all():
         if block.time_period_contains(booking): #Maybe add has_service check later if buisnesses want to have a block for certain services?
@@ -97,7 +94,7 @@ def check_for_conflict(session, start_datetime, end_datetime, buisness, booking_
     if session.scalars(query).first() is not None:
         return True
     
-    query=query=select(tables.Booking).where( (tables.Booking.buisness==buisness) & ((tables.Booking.start_datetime >= start_datetime) |  (tables.Booking.end_datetime <= end_datetime) ) & (tables.Booking.id != booking_id if booking_id is not None else true()) ) #See if there's any other booking that conflicts with the time period
+    query=select(tables.Booking).where( (tables.Booking.buisness==buisness) & ((tables.Booking.start_datetime >= start_datetime) |  (tables.Booking.end_datetime <= end_datetime) ) & (tables.Booking.id != booking_id if booking_id is not None else true()) ) #See if there's any other booking that conflicts with the time period
     
     return session.scalars(query).first() is not None
           
