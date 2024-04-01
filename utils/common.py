@@ -16,19 +16,6 @@ import utils.users as users
 
 app=Flask("backend_server")
 
-def getItem(cls,id,session=None):
-    session_exists=True
-    if session is None:
-        session_exists=False #Have to make one
-        session=Session(database,expire_on_commit=False) #Can be used outside session
-        
-    query=select(cls).where(cls.id==id)
-    result=session.scalars(query).one_or_none()
-    
-    if not session_exists:
-        session.close() 
-    return result
-    
 def post_wrap(func):
     def wrapper(*args,**kwargs):
         key="methods"
@@ -44,16 +31,11 @@ setattr(app,"route",post_wrap(app.route))
 CORS(app)
 
 import functools
-def fromStringList(string):
-    return string.removeprefix(" ").removesuffix(" ").split(" ") if string!="" else []
-
-def toStringList(lst):
-    return "" if lst==[] else " "+(" ".join(lst))+" "
 
 UTC=ZoneInfo("UTC")
 DATETIME_FORMAT="%Y-%m-%d %H:%M:%S.%f"
  
-def authenticate(func): #There is a possible race-condition with two etc. /likes, where two different processes will be working on two different lists, and write two lists. The only way to do this is with dynamic Locks (one for each user) --- Subclass defaultdict to only delete when the lock's.__acquires<=0. Subclass Lock to keep track of __acquires. It doesn't totally eliminate race conditions, but it lowers the chance significantly. However, this isn't a thing in Python (Locks are gained through inheritance). Other languages like Go do not have this issue (they use threading, so sharing memory is easy).
+def authenticate(func):
    @functools.wraps(func)
    def wrapper(*args,**kwargs):
        uid=request.json["uid"]

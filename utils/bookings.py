@@ -18,11 +18,10 @@ def assign_json_to_booking(session, booking, data, create):
         
         if col in ["id","author","code"]:
             continue
-        elif col=="services":
-            value=common.toStringList(value)
         elif col.endswith("_datetime"):
             value=datetime.strptime(value, common.DATETIME_FORMAT).replace(tzinfo=timezone).localize(common.UTC)
         setattr(booking,col,value)
-    
-    if check_for_conflict(session, booking.start_datetime, booking.end_datetime, booking.buisness, booking.id if create==False else None):
+    buisness=session.get(tables.Availability, session.get(tables.Availability_to_Service, booking.availability_to_Service).availability).buisness
+
+    if check_for_conflict(session, booking.start_datetime, booking.end_datetime, buisness, booking.id if create==False else None): #Don't create booking if there is a conflict
         return -1
