@@ -30,7 +30,7 @@ def create_post():
 
         session.commit() #So we can get an id
         
-        availability.author=uid
+        availability.buisness=uid
         availabilities.assign_json_to_availability(availability, request.json)
                     
         session.commit()
@@ -58,9 +58,9 @@ def availability_info():
             if col=="id":
                 continue
             elif col.endswith("_datetime"):
-                value=value.localize(timezone).strftime(common.DATETIME_FORMAT)
+                value=value.astimezone(timezone).strftime(common.DATETIME_FORMAT)
             elif col.endswith("_time"):
-                value=value.localize(timezone).isoformat()
+                value=value.astimezone(timezone).isoformat()
             elif col=="days_supported":
                 value=[NUM_TO_DAY[i] for i in range(len(NUM_TO_DAY)) if value & (1 << i) != 0 ]
             if col=="services":
@@ -89,9 +89,9 @@ def availability_search():
     
     timezone=ZoneInfo(request.json.get("timezone","UTC"))
     
-    start_datetime=datetime.strptime(request.json["start_datetime"], common.DATETIME_FORMAT).replace(tzinfo=timezone).localize(common.UTC)
+    start_datetime=datetime.strptime(request.json["start_datetime"], common.DATETIME_FORMAT).replace(tzinfo=timezone).astimezone(common.UTC)
     
-    end_datetime=datetime.strptime(request.json["end_datetime"], common.DATETIME_FORMAT).replace(tzinfo=timezone).localize(common.UTC)
+    end_datetime=datetime.strptime(request.json["end_datetime"], common.DATETIME_FORMAT).replace(tzinfo=timezone).astimezone(common.UTC)
     
     services=request.json["services"]
     
