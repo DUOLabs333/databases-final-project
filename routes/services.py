@@ -5,15 +5,7 @@ from utils.common import app
 from utils import services
 
 from flask import request
-from sqlalchemy import select, tuple_
 from sqlalchemy.orm import Session
-import pgeocode
-
-import os
-from pathlib import Path
-from datetime import datetime
-from zoneinfo import ZoneInfo
-
 
 @app.route("/services/create")
 @common.authenticate
@@ -46,7 +38,7 @@ def service_info():
             result["error"]="NOT_FOUND"
             return result
         
-        for col in availability.__mapper__.attrs.keys():
+        for col in service.__mapper__.attrs.keys():
             value=getattr(service,col)
             if col=="id":
                 continue                

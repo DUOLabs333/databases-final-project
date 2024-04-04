@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from flask import request
 
 from faker import Faker as faker
-import string, datetime, itertools
+import string, datetime
 from datetime import UTC
 
 MAX_DATETIME=datetime.datetime().max.replace(tzinfo=UTC)
@@ -116,7 +116,7 @@ def populate():
     return result
 
 @app.route("/tables/drop")
-def populate():
+def drop():
     result={}
     
     uid=request.json["uid"]

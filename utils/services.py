@@ -2,13 +2,11 @@ import utils.common as common
 import utils.tables as tables
 import utils.availabilities as availabilities
 
-from sqlalchemy import or_, true, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
-from datetime import datetime, time
-from zoneinfo import ZoneInfo
 
 def assign_json(service, data):
-    for col in availability.__mapper__.attrs.keys():
+    for col in service.__mapper__.attrs.keys():
         if col in data:
             value=data[col]
         else:
@@ -17,7 +15,7 @@ def assign_json(service, data):
         if col in ["id","buisness"]:
             continue
           
-        setattr(availability,col,value)
+        setattr(service,col,value)
         
 
 def modify(request, method):

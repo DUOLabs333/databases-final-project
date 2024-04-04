@@ -4,15 +4,14 @@ import sys,os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..")))
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from flask import Flask, request
 from flask_cors import CORS
 from zoneinfo import ZoneInfo
+import tables
 
 database = create_engine("sqlite:///test_db.db")
-
-import utils.users as users
 
 app=Flask("backend_server")
 
@@ -41,9 +40,9 @@ def authenticate(func):
        uid=request.json["uid"]
        hash=request.json["key"]
        
-       user=users.getUser(uid)
-       
-       has_access=(user is not None) and (hash==user.password_hash)
+       with Session(database) as session:
+           user=session.get(tables.User,uid)
+           has_access=(user is not None) and (hash==user.password_hash)
        
        if not has_access:
            result={"error":"ACCESS_DENIED"}

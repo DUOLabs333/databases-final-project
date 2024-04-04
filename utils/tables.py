@@ -1,13 +1,12 @@
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
-from sqlalchemy.ext.hybrid import hybrid_method
-from sqlalchemy import ForeignKey, case, true
+from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, Session
+from sqlalchemy.ext.hybrid import hybrid_method, hybrid_property
+from sqlalchemy import ForeignKey, case, true, select, inspect
 from sqlalchemy.types import DateTime
 from datetime import datetime as Datetime
 from datetime import time as Time
 import datetime
 from zoneinfo import ZoneInfo
+import common
 
 # declarative base class
 class BaseTable(DeclarativeBase):
@@ -112,7 +111,7 @@ class Availability(BaseTable):
         for key in service:
             services_clause &= (getattr(Service,key)==service[key]) #service is a dictionary with keys that match the columns in the Service table
 
-        return (select(Service.id).join_from(Availability_to_Service, Service, Availability_to_Service.service==Service.id, isouter=True).where(availability==self.id & services_clause)).exists()
+        return (select(Service.id).join_from(Availability_to_Service, Service, Availability_to_Service.service==Service.id, isouter=True).where(Availability_to_Service.availability==self.id & services_clause)).exists()
 
     @hybrid_method
     def has_service(self, service):
@@ -141,7 +140,7 @@ class Booking(BaseTable):
         with Session(common.database) as session:
             return session.scalars(self.buisness_expression()).first()
 
-    @hybrid_property.expression
+    @buisness.expression
     def buisness(self):
         return self.buisness_expression().scalar_subquery()
 

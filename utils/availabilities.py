@@ -1,9 +1,9 @@
 import utils.common as common
 import utils.tables as tables
-from sqlalchemy import or_, true, select
+from sqlalchemy import true, select
 from sqlalchemy.orm import Session
-from datetime import datetime, time
 from zoneinfo import ZoneInfo
+from datetime import datetime, time
 
 DAY_TO_NUM={"MONDAY":0, "TUESDAY":1, "WEDNESDAY":2, "THURSDAY":3, "FRIDAY":4, "SATURDAY":5, "SUNDAY":6}
 
@@ -100,7 +100,7 @@ def check_for_conflict(session, start_datetime, end_datetime, buisness, booking_
           
 def get_availabilities_in_range(start_datetime, end_datetime, services, buisness=None): #Should work --- since bookings must take place within one day, and availabilities on the same day are contiguous, if two points are within the availability, then availability exists between them (Intermediate value theorem)
     
-    return tables.Availability.time_period_contains(start_datetime) & tables.Availability.time_period_contains(end_datetime) & tables.Availability.has_service(service) & (tables.Availability.author==buisness if buisness is not None else true()) & tables.Availability.available
+    return tables.Availability.time_period_contains(start_datetime) & tables.Availability.time_period_contains(end_datetime) & tables.Availability.has_service(services) & (tables.Availability.author==buisness if buisness is not None else true()) & tables.Availability.available
 
 def availability_change(request, method):
     result={}
