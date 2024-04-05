@@ -31,7 +31,7 @@ def create():
                 result["error"]="USERNAME_EXISTS"
                 return result
         
-        user.password_salt=''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+        user.password_salt=common.generate_salt()
 
         users.assign_json_to_user(user, request.json)
         user.creation_time=datetime.now(timezone.utc)

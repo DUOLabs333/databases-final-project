@@ -29,13 +29,16 @@ setattr(app,"route",post_wrap(app.route))
             
 CORS(app)
 
-import functools, hashlib
+import functools, hashlib, random, string
 
 UTC=ZoneInfo("UTC")
 DATETIME_FORMAT="%Y-%m-%d %H:%M:%S.%f"
 
 def pass_hash(password, salt):
     return hashlib.sha256((password+salt).encode("utf-8")).hexdigest()
+
+def generate_salt():
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
 
 def authentication_wrapper(uid, password, func): 
    has_access=False

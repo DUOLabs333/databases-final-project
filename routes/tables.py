@@ -42,7 +42,7 @@ def populate():
             
             user.username=faker.unique.simple_profile()["username"]
             user.password_hash=''.join(faker.random_elements(elements=string.ascii_letters+string.digits, length=64, unique=False))
-            user.password_salt=faker.pystr()
+            user.password_salt=common.generate_salt()
             user.creation_time=faker.date_time(tzinfo=UTC)
             user.profile=faker.paragraph(nb_sentences=5)
             user.address=faker.unique.address().replace("\n",", ")
