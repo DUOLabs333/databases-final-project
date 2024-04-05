@@ -6,7 +6,7 @@ from datetime import datetime as Datetime
 from datetime import time as Time
 import datetime
 from zoneinfo import ZoneInfo
-import common
+from utils import common
 
 # declarative base class
 class BaseTable(DeclarativeBase):
@@ -175,8 +175,8 @@ class Service(BaseTable):
 class Availability_to_Service(BaseTable):
     __tablename__= "AVAILABILITY_TO_SERVICE"
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
-    availability: Mapped[int] = mapped_column(ForeignKey("AVAILABILITIES.id"), ondelete="CASCADE")
-    service: Mapped[int] = mapped_column(ForeignKey("SERVICES.id"), ondelete="CASCADE")
+    availability: Mapped[int] = mapped_column(ForeignKey("AVAILABILITIES.id", ondelete="CASCADE"))
+    service: Mapped[int] = mapped_column(ForeignKey("SERVICES.id", ondelete="CASCADE"))
 
 class Transaction(BaseTable):
     __tablename__= "TRANSACTIONS"
