@@ -18,6 +18,7 @@ class User(BaseTable):
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
     username: Mapped[str] = mapped_column(unique=True)
     password_hash: Mapped[str]
+    password_salt: Mapped[str]
     creation_time: Mapped[Datetime]
     profile: Mapped[str] = mapped_column(default="")
     address: Mapped[str] = mapped_column(default="")

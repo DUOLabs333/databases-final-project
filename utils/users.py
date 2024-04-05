@@ -8,9 +8,12 @@ def checkIfUsernameExists(username): #You must have the USERS database locked, a
 
 def assign_json_to_user(user, data):
     for col in user.__mapper__.attrs.keys():
+        if col=="password":
+            user.password_hash=common.pass_hash(data["password"], user.password_salt)
+            continue
         if col not in data:
             continue
-        if col in ["id", "creation_time"]:
+        if col in ["id", "creation_time","password_salt"]:
             continue
         
         setattr(user,col,data[col])
