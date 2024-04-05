@@ -33,7 +33,7 @@ def populate():
         user.id=0
         user.username="root"
         user.password_hash="root" #Insecure, but I don't care enough
-        user.creation_time=datetime.now(UTC)
+        user.creation_time=datetime.datetime.now(UTC)
         session.add(user)
         
         users_list=[0]
@@ -41,7 +41,7 @@ def populate():
         services_list=[]
         availability_to_service_list=[]
 
-        for i in range(NUM_ROWS): #Technically, each table population procedure should be in its own loop --- otherwise, the probability distributions of foreign keys like availability.buisness is not uniform, but are biased towards the first ids created   
+        for _ in range(NUM_ROWS): #Technically, each table population procedure should be in its own loop --- otherwise, the probability distributions of foreign keys like availability.buisness is not uniform, but are biased towards the first ids created   
             user=tables.User()
             
             user.id=faker.unique.pyint(min_value=1)
@@ -77,7 +77,6 @@ def populate():
             availability.start_time=faker.time_object()
             availability.end_time=faker.time_object()
             availability.repetition=faker.random_element(elements=REPETITIONS)
-            availability.services=common.toStringList(faker.random_choices(SERVICES))
             
             session.add(availability)
             

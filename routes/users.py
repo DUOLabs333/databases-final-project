@@ -45,10 +45,10 @@ def info():
     result={}
     
     uid=request.json["uid"]
-    id=request.json.get("id",uid) #By default, use the current uid
+    id=request.json.get("id",uid) #By default, use the current uid if another id wasn't specified
     
     with Session(common.database) as session:
-        user=users.getUser(id,session)
+        user=session.get(tables.User, id)
         if user is None:
             result["error"]="NOT_FOUND"
             return result
@@ -68,7 +68,7 @@ def modify():
     
     uid=request.json["uid"]
     with Session(common.database) as session:
-        user=users.getUser(uid,session)
+        user=session.get(tables.User, uid)
         
         username=request.json.get("username", user.username)
         
@@ -95,9 +95,9 @@ def delete():
     with Session(common.database) as session:        
         uid=request.json["uid"]
         id=request.json.get("id",uid)
-        user=users.getUser(id,session)
         
-        deleted_user=users.getUser(request.json["id"])
+        user=session.get(tables.User,id)
+        deleted_user=session.get(tables.User, request.json["id"])
         
         if deleted_user.id!=user.id: #Add check later for root user
             result["error"]="INSUFFICIENT_PERMISSION"

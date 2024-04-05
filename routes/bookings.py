@@ -40,7 +40,8 @@ def booking_info():
     
     uid=request.json["uid"]
     with Session(common.database) as session:
-        booking=bookings.getBooking(request.json["id"],session=session)
+        
+        booking=session.get(tables.Booking, request.json["id"])
         
         availability_to_service=session.get(tables.Availability_to_Service, booking.availability_to_service)
                                 
@@ -71,7 +72,7 @@ def booking_edit():
     result={}
     
     with Session(common.database) as session:
-        booking=bookings.getBooking(request.json["id"],session=session)
+        booking=session.get(tables.Booking, request.json["id"])
         
         if booking is None:
             result["error"]="DOES_NOT_EXIST"
@@ -97,7 +98,7 @@ def booking_cancel():
     uid=request.json["uid"]
     
     with Session(common.database) as session:
-        booking=bookings.getBooking(request.json["id"],session=session)
+        booking=session.get(tables.Booking, request.json["id"])
         
         if booking is None:
             result["error"]="DOES_NOT_EXIST"
@@ -137,7 +138,7 @@ def booking_checkout():
     uid=request.json["id"]
     
     with Session(common.database) as session:
-        booking=bookings.getBooking(request.json["id"],session=session)
+        booking=session.get(tables.Booking, request.json["id"])
         
         if booking is None:
             result["error"]="DOES_NOT_EXIST"

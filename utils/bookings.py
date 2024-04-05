@@ -4,9 +4,6 @@ from sqlalchemy import select
 from zoneinfo import ZoneInfo
 from datetime import datetime
 
-def getBooking(booking_id,session=None):
-    return common.getItem(tables.Booking,booking_id,session)
-    
 def assign_json_to_booking(session, booking, data, create):
     timezone=ZoneInfo(data.get("timezone","UTC"))
     

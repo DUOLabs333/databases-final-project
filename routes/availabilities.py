@@ -45,7 +45,7 @@ def availability_info():
     result={}
     
     with Session(common.database) as session:
-        availability=availabilities.getAvailability(request.json["id"],session=session)
+        availability=session.get(tables.Availability, request.json["id"])
         
         if availability is None:
             result["error"]="NOT_FOUND"
@@ -102,7 +102,7 @@ def availability_search():
     length=request.json.get("length", 50)
     
     with Session(common.database) as session:
-        query=select(tuple_(tables.Availability.buisness, tables.User.zip_code).distinct()).join(tables.User, tables.Availability.author==tables.User.id).where(availabilities.get_availabilities_in_range(session, start_datetime, end_datetime, services))
+        query=select(tuple_(tables.Availability.buisness, tables.User.zip_code).distinct()).join(tables.User, tables.Availability.buisness==tables.User.id).where(availabilities.get_availabilities_in_range(session, start_datetime, end_datetime, services))
         
         rows=[]
          

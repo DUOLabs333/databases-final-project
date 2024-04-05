@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from flask import Flask, request
 from flask_cors import CORS
 from zoneinfo import ZoneInfo
-import tables
+from utils import tables
 
 database = create_engine("sqlite:///test_db.db")
 

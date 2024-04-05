@@ -7,9 +7,6 @@ from datetime import datetime, time
 
 DAY_TO_NUM={"MONDAY":0, "TUESDAY":1, "WEDNESDAY":2, "THURSDAY":3, "FRIDAY":4, "SATURDAY":5, "SUNDAY":6}
 
-def getAvailability(availability_id,session=None):
-    return common.getItem(tables.Availability,availability_id,session)
-
 def assign_json_to_availability(availability, data):
     timezone=ZoneInfo(data.get("timezone","UTC"))
     for col in availability.__mapper__.attrs.keys():
@@ -100,7 +97,7 @@ def check_for_conflict(session, start_datetime, end_datetime, buisness, booking_
           
 def get_availabilities_in_range(start_datetime, end_datetime, services, buisness=None): #Should work --- since bookings must take place within one day, and availabilities on the same day are contiguous, if two points are within the availability, then availability exists between them (Intermediate value theorem)
     
-    return tables.Availability.time_period_contains(start_datetime) & tables.Availability.time_period_contains(end_datetime) & tables.Availability.has_service(services) & (tables.Availability.author==buisness if buisness is not None else true()) & tables.Availability.available
+    return tables.Availability.time_period_contains(start_datetime) & tables.Availability.time_period_contains(end_datetime) & tables.Availability.has_service(services) & (tables.Availability.buisness==buisness if buisness is not None else true()) & tables.Availability.available
 
 def availability_change(request, method):
     result={}
@@ -108,7 +105,7 @@ def availability_change(request, method):
     uid=request.json["uid"]
         
     with Session(common.database) as session:
-        availability=getAvailability(request.get["id"], session)
+        availability=session.get(tables.Availability, request.json["id"])
         
         if availability is None:
             result["error"]="DOES_NOT_EXIST"
