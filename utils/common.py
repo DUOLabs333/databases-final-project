@@ -60,7 +60,7 @@ def authentication_wrapper(uid, password, func):
 def authenticate(func):
    @functools.wraps(func)
    def wrapper(*args,**kwargs):
-       return authentication_wrapper(request.json["uid"], request.json["key"], lambda : func(*args, **kwargs))
+       return authentication_wrapper(request.json["uid"], request.json["password"], lambda : func(*args, **kwargs))
    return wrapper
 
 def last(lst):

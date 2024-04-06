@@ -6,11 +6,11 @@ from sqlalchemy.orm import Session
 
 from flask import request
 
-from faker import Faker as faker
+from faker import Faker
 import string, datetime
 from datetime import UTC
 
-MAX_DATETIME=datetime.datetime().max.replace(tzinfo=UTC)
+MAX_DATETIME=datetime.datetime.max.replace(tzinfo=UTC)
 NUM_ROWS=100
 REPETITIONS=["ONETIME","DAILY", "WEEKLY", "MONTHLY", "YEARLY"]
 DEVICES=["IPHONE", "IPAD", "MACBOOK", "PIXEL", "HTC", "SAMSUNG", "XIAOMI"] #We can get more specific later
@@ -19,12 +19,14 @@ REPAIRS=["SCREEN_REPAIR", "CAMERA_REPAIR", "BATTERY_REPLACEMENT"]
 VEHICLES=["TOYOTA", "BMW", "VOLKSWAGEN"]
 SERVICES=["DETAILING", "GENERAL_WASH","BRAKE_FLUID"]
 
+
 @app.route("/tables/populate")
+@common.authenticate
 def populate():
     result={}
-    
+    faker=Faker()
     uid=request.json["uid"]
-    if uid!=0:
+    if uid!=-1:
         result["error"]="INSUFFICIENT_PERMISSION"
         return result
     
@@ -115,11 +117,12 @@ def populate():
     return result
 
 @app.route("/tables/drop")
+@common.authenticate
 def drop():
     result={}
     
     uid=request.json["uid"]
-    if uid!=0:
+    if uid!=-1:
         result["error"]="INSUFFICIENT_PERMISSION"
         return result
     
