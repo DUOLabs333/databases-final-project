@@ -124,4 +124,4 @@ def signin():
             user_lock.release()
             uid=user.id
 
-        return common.authentication_wrapper(user.id, password, lambda: {"uid": uid})
+        return common.authentication_wrapper(uid, password, lambda: {"uid": uid})
