@@ -30,6 +30,7 @@ def populate():
         result["error"]="INSUFFICIENT_PERMISSION"
         return result
     
+    tables.BaseTable.metadata.create_all(common.database,checkfirst=True) #Create tables if they don't exist
     with Session(common.database) as session:    
         users_list=[]
         availabilities_list=[]
@@ -42,7 +43,7 @@ def populate():
             user.id=faker.unique.pyint(min_value=1)
             users_list.append(user.id)
             
-            user.username=faker.unique.simple_profile()["username"]
+            user.username=faker.unique.name().replace(" ","") #Lazy version of faker.unique.simple_profile()["username"] --- couldn't use that piece of code as unique saves the elements in a set to prevent repeats. However, simple_profile() returns dictionaries, which can not be added to sets
             user.password_hash=''.join(faker.random_elements(elements=string.ascii_letters+string.digits, length=64, unique=False))
             user.password_salt=common.generate_salt()
             user.creation_time=faker.date_time(tzinfo=UTC)
@@ -69,7 +70,7 @@ def populate():
             availabilities_list.append(availability.id)
             
             availability.available=faker.pybool()
-            availability.author=faker.random_element(elements=users_list)
+            availability.buisness=faker.random_element(elements=users_list)
             availability.start_datetime=faker.date_time(tzinfo=UTC)
             availability.end_datetime=faker.date_time_between(start_date=availability.start_datetime, end_date=MAX_DATETIME)
             availability.days_supported=faker.pyint(max_value=2**7-1)
@@ -84,7 +85,7 @@ def populate():
             service.id=faker.unique.pyint()
             services_list.append(service.id)
             service.price=faker.pyfloat()
-            is_repair=faker.random_bool()
+            is_repair=faker.pybool()
             if is_repair:
                 service.device=faker.random_element(elements=DEVICES)
                 service.repair=faker.random_element(elements=REPAIRS)
@@ -108,7 +109,7 @@ def populate():
             booking.availability_to_service=faker.random_element(elements=availability_to_service_list)
             booking.start_datetime=faker.date_time(tzinfo=UTC)
             booking.end_datetime=faker.date_time_between(start_date=booking.start_datetime, end_date=MAX_DATETIME)
-            booking.code=faker.unique.pyint(maxint=1000000)
+            booking.code=faker.unique.pyint(max_value=1000000)
             
             session.add(booking)
         
@@ -127,6 +128,6 @@ def drop():
         return result
     
     with Session(common.database) as session:
-        tables.User.metadata.drop_all()
+        tables.BaseTable.metadata.drop_all(common.database, checkfirst=True)
         session.commit()
     return result

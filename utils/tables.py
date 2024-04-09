@@ -151,7 +151,6 @@ class Booking(BaseTable):
 class Service(BaseTable):
    __tablename__="SERVICES"
    id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
-   buisness: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
    price: Mapped[float]
 
    device: Mapped[str]=mapped_column(nullable=True)
