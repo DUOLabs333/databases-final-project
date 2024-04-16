@@ -1,6 +1,4 @@
-#in search, allow for all job applications to show up.
-
-from utils import common, tables
+from utils import common, tables, transactions
 from utils.common import app
 from utils import bookings
 from flask import request
@@ -29,7 +27,11 @@ def create_booking():
             return result
         
         bookings.code=random.randint(10000,10000000)
+
         session.commit()
+
+        transactions.create(session,booking)
+
     
     return result
 
@@ -88,6 +90,8 @@ def booking_edit():
             return result
         else:
             session.commit()
+
+            transactions.create(session,booking) #Yes, I know that they will be charged for every edit, without a corresponding refund. No, I don't care.
             return result
 
 @app.route("/bookings/cancel")
@@ -109,14 +113,15 @@ def booking_cancel():
         
         now=datetime.datetime.now(timezone.utc)
         
-        if not(uid==booking.author and booking.start_datetime < now): #Individuals can only cancel before the start time
+        if (uid==booking.author and booking.start_datetime < now): #Individuals can only cancel before the start time
             result["error"]="TOO_LATE"
             return result
-        elif not(uid==booking.buisness and booking.start_datetime >= now): #Buisnesses can only cancel after the appointment's start time (in case of no-shows)
+        elif (uid==booking.buisness and booking.start_datetime >= now): #Buisnesses can only cancel after the appointment's start time (in case of no-shows)
             result["error"]="TOO_EARLY"
             return result
         session.delete(booking)
         session.commit()
+        transactions.refund(session,booking)
     return result
 
 @app.route("/bookings/list")

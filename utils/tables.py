@@ -132,6 +132,7 @@ class Booking(BaseTable):
     start_datetime: Mapped[Datetime]
     end_datetime: Mapped[Datetime]
     code: Mapped[int] #Must be random
+    timestamp: Mapped[Datetime]
     
     def buisness_expression(self):
         return select(Availability.buisness).join_from(Availability_to_Service, Availability, Availability_to_Service.availability==Availability.id).where(Availability_to_Service.id==self.availability_to_service).limit(1)
@@ -178,13 +179,11 @@ class Availability_to_Service(BaseTable):
     availability: Mapped[int] = mapped_column(ForeignKey("AVAILABILITIES.id", ondelete="CASCADE"))
     service: Mapped[int] = mapped_column(ForeignKey("SERVICES.id", ondelete="CASCADE"))
 
-class Transaction(BaseTable):
-    __tablename__= "TRANSACTIONS"
+class Balance(BaseTable):
+    __tablename__="BALANCE"
+    
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
-    booking: Mapped[int] = mapped_column(ForeignKey("BOOKINGS.id"))
-    method: Mapped[str]
-    status: Mapped[str] = mapped_column(default="Initiated")
-    timestamp: Mapped[Datetime]
+    balance: Mapped[float] = mapped_column(default=0)
 
 class Upload(BaseTable):
     __tablename__="UPLOADS"

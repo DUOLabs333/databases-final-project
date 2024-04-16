@@ -1,5 +1,4 @@
-import utils.common as common
-import utils.tables as tables
+from utils import common, tables, transactions
 from sqlalchemy import true, select
 from sqlalchemy.orm import Session
 from zoneinfo import ZoneInfo
@@ -77,6 +76,7 @@ def cancel_booking(session, booking):
     
     session.delete(booking)
     session.add(cancel_message)
+    transactions.refund(session,booking)
 
 def cancel_all_blocked_bookings(session, block): #Cancel all bookings that conflict with block
     query=select(tables.Booking).where((tables.Booking.buisness==block.buisness) & ((tables.Booking.start_datetime >= block.start_datetime) |  (tables.Booking.end_datetime <= block.end_datetime) ) ) #Coarse filter --- neccessary but not sufficient condition (also lets me avoid remaking all of the availability-matching code)

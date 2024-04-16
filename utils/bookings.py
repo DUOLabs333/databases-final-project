@@ -23,7 +23,7 @@ def assign_json_to_booking(session, booking, data, create):
             value=datetime.strptime(value, common.DATETIME_FORMAT).replace(tzinfo=timezone).localize(common.UTC)
         setattr(booking,col,value)
    
-    query=select(tables.Availability_to_Service.id).join_from(tables.Availability_to_Service, tables.Availability).where(tables.Availability.time_period_contains(booking.start_datetime) & tables.Availability.time_period_contains(booking.end_datetime) & tables.Availability.has_service(service)).limit(1)
+    query=select(tables.Availability_to_Service.id).join_from(tables.Availability_to_Service, tables.Availability, tables.Availability_to_Service.avavilability==tables.Availability.id).where(tables.Availability.time_period_contains(booking.start_datetime) & tables.Availability.time_period_contains(booking.end_datetime) & tables.Availability.has_service(service)).limit(1)
 
     availability_to_service=session.scalars(query).first()
 

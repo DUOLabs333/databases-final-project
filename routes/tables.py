@@ -88,7 +88,7 @@ def populate():
                 service=tables.Service()
                 service.id=faker.unique.pyint()
                 services_list.append(service.id)
-                service.price=faker.pyfloat()
+                service.price=faker.pyfloat(min_value=0)
                 is_repair=faker.pybool()
                 if is_repair:
                     service.device=faker.random_element(elements=DEVICES)
@@ -114,7 +114,7 @@ def populate():
                 booking.start_datetime=faker.date_time(tzinfo=UTC)
                 booking.end_datetime=faker.date_time_between(start_date=booking.start_datetime, end_date=MAX_DATETIME)
                 booking.code=faker.unique.pyint(max_value=1000000)
-                
+                booking.timestamp=faker.date_time_between(start_date="now", end_date=MAX_DATETIME)
                 session.add(booking)
             
             #We don't populate the Transactions or Uploads tables currently
