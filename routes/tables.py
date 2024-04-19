@@ -111,7 +111,17 @@ def populate():
             
             session.add(booking)
         
-        #We don't populate the Transactions or Uploads tables currently
+            #We don't populate the Transactions or Uploads tables currently
+
+            # populate the transactions table
+            transaction = tables.Transaction()
+            transaction.author = faker.random_element(elements=users_list)
+            transaction.amount = faker.pyfloat()
+            transaction.timestamp = faker.date_time(tzinfo=UTC)
+            transaction.description = faker.text(max_nb_chars=100)
+            
+            session.add(transaction)
+
         session.commit()
     return result
 
@@ -126,5 +136,14 @@ def populate():
     
     with Session(common.database) as session:
         tables.User.metadata.drop_all()
+
+        # drop all tables
+        tables.Message.metadata.drop_all()
+        tables.Availability.metadata.drop_all()
+        tables.Service.metadata.drop_all()
+        tables.Availability_to_Service.metadata.drop_all()
+        tables.Booking.metadata.drop_all()
+        tables.Transaction.metadata.drop_all()
+        tables.Upload.metadata.drop_all()
         session.commit()
     return result

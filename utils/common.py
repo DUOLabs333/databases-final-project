@@ -1,18 +1,24 @@
 #Should be imported by all relevant files
 
+# scoped sessions rather than creating a new db session each time operation needs to be performed
 import sys,os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..")))
 
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from flask import Flask, request
 from flask_cors import CORS
 from zoneinfo import ZoneInfo
 
 database = create_engine("sqlite:///test_db.db")
+Session = scoped_session(sessionmaker(bind=database))
 
 import utils.users as users
+
+@app.teardown_appcontext
+def remove_session(exception=None):
+    Session.remove()
 
 app=Flask("backend_server")
 
