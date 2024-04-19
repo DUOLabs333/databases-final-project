@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from flask import Flask, request
 from flask_cors import CORS
 from zoneinfo import ZoneInfo
+from utils import tables
 
 database = create_engine("sqlite:///test_db.db")
 Session = scoped_session(sessionmaker(bind=database))
@@ -36,26 +37,38 @@ setattr(app,"route",post_wrap(app.route))
             
 CORS(app)
 
-import functools
+import functools, hashlib, random, string
 
 UTC=ZoneInfo("UTC")
 DATETIME_FORMAT="%Y-%m-%d %H:%M:%S.%f"
- 
+
+def pass_hash(password, salt):
+    return hashlib.sha256((password+salt).encode("utf-8")).hexdigest()
+
+def generate_salt():
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+
+def authentication_wrapper(uid, password, func): 
+   has_access=False
+   if uid==-1 and password=="root": #Hardcoded in, so we can bootstrap populating the table (and avoid a catch-22)
+       has_access=True
+   else:
+       with Session(database) as session:
+           user=session.get(tables.User,uid)
+           if user is None:
+               return {"error": "USER_NOT_FOUND"}
+
+           has_access=(user.password_hash==pass_hash(password,user.password_salt))
+   
+   if not has_access:
+       return {"error":"PASSWORD_INCORRECT"}
+   else:
+       return func()
+
 def authenticate(func):
    @functools.wraps(func)
    def wrapper(*args,**kwargs):
-       uid=request.json["uid"]
-       hash=request.json["key"]
-       
-       user=users.getUser(uid)
-       
-       has_access=(user is not None) and (hash==user.password_hash)
-       
-       if not has_access:
-           result={"error":"ACCESS_DENIED"}
-           return result
-       else:
-           return func(*args,**kwargs)
+       return authentication_wrapper(request.json["uid"], request.json["password"], lambda : func(*args, **kwargs))
    return wrapper
 
 def last(lst):

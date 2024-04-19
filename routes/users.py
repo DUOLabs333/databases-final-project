@@ -30,9 +30,10 @@ def create():
                 user_lock.release()
                 result["error"]="USERNAME_EXISTS"
                 return result
-                
-        users.assign_json_to_user(user, request.json)
         
+        user.password_salt=common.generate_salt()
+
+        users.assign_json_to_user(user, request.json)
         user.creation_time=datetime.now(timezone.utc)
         session.add(user)
         session.commit()
@@ -45,10 +46,10 @@ def info():
     result={}
     
     uid=request.json["uid"]
-    id=request.json.get("id",uid) #By default, use the current uid
+    id=request.json.get("id",uid) #By default, use the current uid if another id wasn't specified
     
     with Session(common.database) as session:
-        user=users.getUser(id,session)
+        user=session.get(tables.User, id)
         if user is None:
             result["error"]="NOT_FOUND"
             return result
@@ -68,7 +69,7 @@ def modify():
     
     uid=request.json["uid"]
     with Session(common.database) as session:
-        user=users.getUser(uid,session)
+        user=session.get(tables.User, uid)
         
         username=request.json.get("username", user.username)
         
@@ -95,9 +96,9 @@ def delete():
     with Session(common.database) as session:        
         uid=request.json["uid"]
         id=request.json.get("id",uid)
-        user=users.getUser(id,session)
         
-        deleted_user=users.getUser(request.json["id"])
+        user=session.get(tables.User,id)
+        deleted_user=session.get(tables.User, request.json["id"])
         
         if deleted_user.id!=user.id: #Add check later for root user
             result["error"]="INSUFFICIENT_PERMISSION"
@@ -111,20 +112,16 @@ def delete():
 
 @app.route("/users/signin")
 def signin():
-    result={}
     with Session(common.database) as session:
         username=request.json["username"]
-        password=request.json["password_hash"]
-            
-        user=session.scalars(select(tables.User).where(tables.User.username==username)).first()
+        password=request.json["password"]
         
-        if user is None:
-            result["error"]="USER_NOT_FOUND"
-            return result
-        
-        if password!=user.password_hash:
-            result["error"]="PASSWORD_INCORRECT"
-            return result
-            
-        result["uid"]=user.id
-        return result                        
+        if username=="root": #Hardcoded in
+            uid=-1
+        else:
+            user_lock.acquire()
+            user=session.scalars(select(tables.User).where(tables.User.username==username)).first()
+            user_lock.release()
+            uid=user.id
+
+        return common.authentication_wrapper(uid, password, lambda: {"uid": uid})

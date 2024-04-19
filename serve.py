@@ -1,4 +1,4 @@
-from routes import users, availabilities, bookings
+from routes import users, availabilities, bookings, tables, balance
 
 from utils.common import app
 

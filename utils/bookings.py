@@ -1,12 +1,9 @@
 from utils.availabilities import check_for_conflict
 from utils import common, tables
-
+from sqlalchemy import select
 from zoneinfo import ZoneInfo
 from datetime import datetime
 
-def getBooking(booking_id,session=None):
-    return common.getItem(tables.Booking,booking_id,session)
-    
 def assign_json_to_booking(session, booking, data, create):
     timezone=ZoneInfo(data.get("timezone","UTC"))
     
@@ -26,7 +23,7 @@ def assign_json_to_booking(session, booking, data, create):
             value=datetime.strptime(value, common.DATETIME_FORMAT).replace(tzinfo=timezone).localize(common.UTC)
         setattr(booking,col,value)
    
-    query=select(tables.Availability_to_Service.id).join_from(tables.Availability_to_Service, tables.Availability).where(tables.Availability.time_period_contains(booking.start_datetime) & tables.Availability.time_period_contains(booking.end_datetime) & tables.Availability.has_service(service)).limit(1)
+    query=select(tables.Availability_to_Service.id).join_from(tables.Availability_to_Service, tables.Availability, tables.Availability_to_Service.availability==tables.Availability.id).where(tables.Availability.time_period_contains(booking.start_datetime) & tables.Availability.time_period_contains(booking.end_datetime) & tables.Availability.has_service(service)).limit(1)
 
     availability_to_service=session.scalars(query).first()
 

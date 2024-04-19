@@ -1,13 +1,12 @@
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
-from sqlalchemy.ext.hybrid import hybrid_method
-from sqlalchemy import ForeignKey, case, true
+from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, Session
+from sqlalchemy.ext.hybrid import hybrid_method, hybrid_property
+from sqlalchemy import ForeignKey, case, true, select, inspect
 from sqlalchemy.types import DateTime
 from datetime import datetime as Datetime
 from datetime import time as Time
 import datetime
 from zoneinfo import ZoneInfo
+from utils import common
 
 # declarative base class
 class BaseTable(DeclarativeBase):
@@ -19,6 +18,7 @@ class User(BaseTable):
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
     username: Mapped[str] = mapped_column(unique=True)
     password_hash: Mapped[str]
+    password_salt: Mapped[str]
     creation_time: Mapped[Datetime]
     profile: Mapped[str] = mapped_column(default="")
     address: Mapped[str] = mapped_column(default="")
@@ -112,7 +112,7 @@ class Availability(BaseTable):
         for key in service:
             services_clause &= (getattr(Service,key)==service[key]) #service is a dictionary with keys that match the columns in the Service table
 
-        return (select(Service.id).join_from(Availability_to_Service, Service, Availability_to_Service.service==Service.id, isouter=True).where(availability==self.id & services_clause)).exists()
+        return (select(Service.id).join_from(Availability_to_Service, Service, Availability_to_Service.service==Service.id, isouter=True).where(Availability_to_Service.availability==self.id & services_clause)).exists()
 
     @hybrid_method
     def has_service(self, service):
@@ -132,6 +132,7 @@ class Booking(BaseTable):
     start_datetime: Mapped[Datetime]
     end_datetime: Mapped[Datetime]
     code: Mapped[int] #Must be random
+    timestamp: Mapped[Datetime]
     
     def buisness_expression(self):
         return select(Availability.buisness).join_from(Availability_to_Service, Availability, Availability_to_Service.availability==Availability.id).where(Availability_to_Service.id==self.availability_to_service).limit(1)
@@ -141,7 +142,7 @@ class Booking(BaseTable):
         with Session(common.database) as session:
             return session.scalars(self.buisness_expression()).first()
 
-    @hybrid_property.expression
+    @buisness.expression
     def buisness(self):
         return self.buisness_expression().scalar_subquery()
 
@@ -151,7 +152,6 @@ class Booking(BaseTable):
 class Service(BaseTable):
    __tablename__="SERVICES"
    id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
-   buisness: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
    price: Mapped[float]
 
    device: Mapped[str]=mapped_column(nullable=True)
@@ -176,16 +176,14 @@ class Service(BaseTable):
 class Availability_to_Service(BaseTable):
     __tablename__= "AVAILABILITY_TO_SERVICE"
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
-    availability: Mapped[int] = mapped_column(ForeignKey("AVAILABILITIES.id"), ondelete="CASCADE")
-    service: Mapped[int] = mapped_column(ForeignKey("SERVICES.id"), ondelete="CASCADE")
+    availability: Mapped[int] = mapped_column(ForeignKey("AVAILABILITIES.id", ondelete="CASCADE"))
+    service: Mapped[int] = mapped_column(ForeignKey("SERVICES.id", ondelete="CASCADE"))
 
-class Transaction(BaseTable):
-    __tablename__= "TRANSACTIONS"
+class Balance(BaseTable):
+    __tablename__="BALANCE"
+    
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
-    booking: Mapped[int] = mapped_column(ForeignKey("BOOKINGS.id"))
-    method: Mapped[str]
-    status: Mapped[str] = mapped_column(default="Initiated")
-    timestamp: Mapped[Datetime]
+    balance: Mapped[float] = mapped_column(default=0)
 
 class Upload(BaseTable):
     __tablename__="UPLOADS"
