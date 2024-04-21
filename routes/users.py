@@ -111,6 +111,8 @@ def signin():
     else:
         with user_lock:
             user=session.scalars(select(tables.User).where(tables.User.username==username)).first()
+        if user is None:
+            return {"error": "USER_NOT_FOUND"}
         uid=user.id
 
     return common.authentication_wrapper(uid, password, lambda: {"uid": uid})

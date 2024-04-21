@@ -12,10 +12,13 @@ from zoneinfo import ZoneInfo
 
 database = create_engine("sqlite:///test_db.db")
 session=scoped_session(sessionmaker(bind=database))
+app=Flask("backend_server")
+
+@app.teardown_appcontext
+def remove_session(exception=None):
+    session.remove()
 
 from utils import tables
-
-app=Flask("backend_server")
 
 def post_wrap(func):
     def wrapper(*args,**kwargs):
