@@ -1,45 +1,41 @@
-from utils import tables, common
-
+from utils import tables
+from utils.common import session
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 def GetBalance(id):
-    with Session(common.database) as session:
-        query=select(tables.Balance.balance).where(tables.Balance.id==id)
-        return session.scalars(query).first()
+    query=select(tables.Balance.balance).where(tables.Balance.id==id)
+    return session.scalars(query).first()
 
 def AddToBalance(id,amount):
-    with Session(common.database) as session:
-        query=select(tables.Balance).where(tables.Balance.id==id)
-        balance=session.scalars(query).first()
-        
-        balance.balance+=amount
-        
-        session.commit()
-        
-        return balance.balance
+    query=select(tables.Balance).where(tables.Balance.id==id)
+    balance=session.scalars(query).first()
+    
+    balance.balance+=amount
+    
+    session.commit()
+    
+    return balance.balance
 
 def RemoveFromBalance(id,amount):
-    with Session(common.database) as session:
-        query=select(tables.Balance).where(tables.Balance.id==id)
-        balance=session.scalars(query).first()
+    query=select(tables.Balance).where(tables.Balance.id==id)
+    balance=session.scalars(query).first()
+    
+    if balance.balance < amount:
+        return None
         
-        if balance.balance < amount:
-            return None
-            
-        balance.balance-=amount
-        
-        session.commit()
-        
-        return balance.balance
+    balance.balance-=amount
+    
+    session.commit()
+    
+    return balance.balance
 
 def RegisterBalance(id):
     balance=tables.Balance()
     balance.balance=0
     balance.id=id
-    with Session(common.database) as session:
-        session.add(balance)
-        session.commit()
+    
+    session.add(balance)
+    session.commit()
 
 def import_from_CC(data):
     error=AddToBalance(data["uid"],data["amount"])

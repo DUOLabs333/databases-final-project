@@ -1,10 +1,11 @@
 from utils.availabilities import check_for_conflict
-from utils import common, tables
+from utils import tables
+from utils.common import session
 from sqlalchemy import select
 from zoneinfo import ZoneInfo
 from datetime import datetime
 
-def assign_json_to_booking(session, booking, data, create):
+def assign_json_to_booking(booking, data, create):
     timezone=ZoneInfo(data.get("timezone","UTC"))
     
     buisness=data["buisness"]
@@ -27,7 +28,7 @@ def assign_json_to_booking(session, booking, data, create):
 
     availability_to_service=session.scalars(query).first()
 
-    if (availability_to_service is None) or check_for_conflict(session, booking.start_datetime, booking.end_datetime, buisness, booking.id if create==False else None): #Don't create booking if there is a conflict
+    if (availability_to_service is None) or check_for_conflict(booking.start_datetime, booking.end_datetime, buisness, booking.id if create==False else None): #Don't create booking if there is a conflict
         return -1
 
     booking.availability_to_service=availability_to_service

@@ -1,8 +1,7 @@
 #Have import and export
 
 from utils import common, balance, tables
-from sqlalchemy.orm import Session
-from utils.common import app
+from utils.common import app, session
 from flask import request
 
 @app.route("/balance/init")
@@ -10,16 +9,15 @@ from flask import request
 def init():
     result={}
     
-    with Session(common.database) as session:
-        bal=tables.Balance()
-        
-        if balance.GetBalance(request.json["uid"]) is not None:
-            result["error"]="BALANCE_ALREADY_EXISTS"
-            return result
-        
-        bal.id=request.json["uid"] #Every user can have at most one balance anyways, so why have an extra set of ids?
-        session.add(bal)
-        session.commit()
+    bal=tables.Balance()
+    
+    if balance.GetBalance(request.json["uid"]) is not None:
+        result["error"]="BALANCE_ALREADY_EXISTS"
+        return result
+    
+    bal.id=request.json["uid"] #Every user can have at most one balance anyways, so why have an extra set of ids?
+    session.add(bal)
+    session.commit()
         
     return result
 
@@ -54,7 +52,7 @@ def _import():
     
     return result
 
-@app.route("/balance/export") #We don't want to trap people's money! (Maybe add a threshold to prevent paying CC fees for non-substantial exports
+@app.route("/balance/export") #We don't want to keep people's money! (Maybe add a threshold to prevent paying CC fees for non-substantial exports
 @common.authenticate
 def export():
     result={}

@@ -1,8 +1,8 @@
-from utils import common, tables, transactions
+from utils import tables, transactions
 from sqlalchemy import true, select
-from sqlalchemy.orm import Session
 from zoneinfo import ZoneInfo
 from datetime import datetime, time
+from utils.common import session
 
 DAY_TO_NUM={"MONDAY":0, "TUESDAY":1, "WEDNESDAY":2, "THURSDAY":3, "FRIDAY":4, "SATURDAY":5, "SUNDAY":6}
 
@@ -28,30 +28,29 @@ def assign_json_to_availability(availability, data):
             
             value=bitstring
         elif col=="services":
-            with Session(common.database) as session:
-                query=select(tables.Availability_to_Service.service).where(tables.Availability_to_Service.service==availability.id)
-                old_services=set(session.scalars(query).all()) #The existing services attached to the availability
-                new_services=set(value) #What services should be attached to the availability
+            query=select(tables.Availability_to_Service.service).where(tables.Availability_to_Service.service==availability.id)
+            old_services=set(session.scalars(query).all()) #The existing services attached to the availability
+            new_services=set(value) #What services should be attached to the availability
 
-                to_be_added=new_services-old_services
-                to_be_deleted=old_services - new_services
+            to_be_added=new_services-old_services
+            to_be_deleted=old_services - new_services
 
-                for service in to_be_added: #Add new rows for every new service
-                    row=tables.Availability_to_Service()
-                    row.availability=availability.id
-                    row.service=service
-                    session.add(row)
+            for service in to_be_added: #Add new rows for every new service
+                row=tables.Availability_to_Service()
+                row.availability=availability.id
+                row.service=service
+                session.add(row)
 
-                query=select(tables.Availability_to_Service).where(tables.Availability_to_Service.availability==availability.id & tables.Availability_to_Service.service.in_(to_be_deleted))
-                for row in session.scalars(query): #Delete all rows which is attached to the no-longer-attached services
-                    session.delete(row)
+            query=select(tables.Availability_to_Service).where(tables.Availability_to_Service.availability==availability.id & tables.Availability_to_Service.service.in_(to_be_deleted))
+            for row in session.scalars(query): #Delete all rows which is attached to the no-longer-attached services
+                session.delete(row)
 
-                session.commit()
+            session.commit()
             continue
             
         setattr(availability,col,value)
         
-def reassign_or_cancel_bookings(session, availability): #Handle all bookings that are currently attached to an availability (availability may be deleted or edited, so all child bookings have to be upgraded to match)
+def reassign_or_cancel_bookings(availability): #Handle all bookings that are currently attached to an availability (availability may be deleted or edited, so all child bookings have to be upgraded to match)
     query=select(tables.Booking).join(tables.Availability_to_Service, tables.Booking.availability_to_service==tables.Availability_to_Service.id).where((tables.Availability_to_Service.availability==availability.id) & (tables.Booking.start_datetime < datetime.now(common.UTC))) #Get all bookings that use <availability>
     
     for booking in session.scalars(query):
@@ -65,9 +64,9 @@ def reassign_or_cancel_bookings(session, availability): #Handle all bookings tha
         if (new_availability is not None) and (not check_for_conflict(session, booking.start_datetime, booking.end_datetime, availability.buisness)): #If such an availability exists and does not conflict with any blocks/other bookings
             booking.availability_to_service=new_availability.id
         else:
-            cancel_booking(session, booking) #No way to keep the booking
+            cancel_booking(booking) #No way to keep the booking
 
-def cancel_booking(session, booking):                                                            
+def cancel_booking(booking):                                                            
     cancel_message=tables.Message()
     cancel_message.recipient=booking.author
     cancel_message.time_posted=datetime.now(common.UTC)
@@ -76,16 +75,16 @@ def cancel_booking(session, booking):
     
     session.delete(booking)
     session.add(cancel_message)
-    transactions.refund(session,booking)
+    transactions.refund(booking)
 
-def cancel_all_blocked_bookings(session, block): #Cancel all bookings that conflict with block
+def cancel_all_blocked_bookings(block): #Cancel all bookings that conflict with block
     query=select(tables.Booking).where((tables.Booking.buisness==block.buisness) & ((tables.Booking.start_datetime >= block.start_datetime) |  (tables.Booking.end_datetime <= block.end_datetime) ) ) #Coarse filter --- neccessary but not sufficient condition (also lets me avoid remaking all of the availability-matching code)
     
     for booking in session.scalars(query).all():
         if block.time_period_contains(booking): #Maybe add has_service check later if buisnesses want to have a block for certain services?
-            cancel_booking(session, booking)
+            cancel_booking(booking)
 
-def check_for_conflict(session, start_datetime, end_datetime, buisness, booking_id=None):
+def check_for_conflict(start_datetime, end_datetime, buisness, booking_id=None):
     query=select(tables.Availability.id).where(get_availabilities_in_range(start_datetime, end_datetime, tables.Service.services_dict, buisness) & tables.Availability.available==False).limit(1) #See if there's a block that conflicts with the proposed time period
 
     if session.scalars(query).first() is not None:
@@ -104,25 +103,24 @@ def availability_change(request, method):
     
     uid=request.json["uid"]
         
-    with Session(common.database) as session:
-        availability=session.get(tables.Availability, request.json["id"])
-        
-        if availability is None:
-            result["error"]="DOES_NOT_EXIST"
-            return result
-        elif uid!=availability.author:
-             result["error"]="INSUFFICIENT_PERMISSION"
-             return result
-        
-        if method=="edit":
-            assign_json_to_availability(availability, request.json)
-        elif method=="delete":
-            session.delete(availability)
+    availability=session.get(tables.Availability, request.json["id"])
+    
+    if availability is None:
+        result["error"]="DOES_NOT_EXIST"
+        return result
+    elif uid!=availability.author:
+         result["error"]="INSUFFICIENT_PERMISSION"
+         return result
+    
+    if method=="edit":
+        assign_json_to_availability(availability, request.json)
+    elif method=="delete":
+        session.delete(availability)
 
-        session.commit() #Push the changes that we made so that future calls to the database can see this
-        if not((not availability.available) and (method=="delete")): #We don't have to consider what happens when you delete a block, as there's no way that availability can decrease 
-            reassign_or_cancel_bookings(session,availability)
+    session.commit() #Push the changes that we made so that future calls to the database can see this
+    if not((not availability.available) and (method=="delete")): #We don't have to consider what happens when you delete a block, as there's no way that availability can decrease 
+        reassign_or_cancel_bookings(availability)
 
-        session.commit()
+    session.commit()
              
     return result

@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, Session
+from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 from sqlalchemy.ext.hybrid import hybrid_method, hybrid_property
 from sqlalchemy import ForeignKey, case, true, select, inspect
 from sqlalchemy.types import DateTime
@@ -6,7 +6,7 @@ from datetime import datetime as Datetime
 from datetime import time as Time
 import datetime
 from zoneinfo import ZoneInfo
-from utils import common
+from utils.common import session
 
 # declarative base class
 class BaseTable(DeclarativeBase):
@@ -116,8 +116,7 @@ class Availability(BaseTable):
 
     @hybrid_method
     def has_service(self, service):
-        with Session(common.database) as session:
-            return session.scalars(self.has_service_expression(service)).first() # Will return True or False
+        return session.scalars(self.has_service_expression(service)).first() # Will return True or False
     
     @has_service.expression
     def has_service(self, service):
@@ -139,8 +138,7 @@ class Booking(BaseTable):
 
     @hybrid_property
     def buisness(self):
-        with Session(common.database) as session:
-            return session.scalars(self.buisness_expression()).first()
+        return session.scalars(self.buisness_expression()).first()
 
     @buisness.expression
     def buisness(self):

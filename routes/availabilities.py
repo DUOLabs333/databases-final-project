@@ -1,12 +1,11 @@
 from utils import common, tables
 
-from utils.common import app
+from utils.common import app, session
 
 from utils import availabilities
 
 from flask import request, send_file, current_app
 from sqlalchemy import select, tuple_
-from sqlalchemy.orm import Session
 import pgeocode
 
 import os
@@ -24,19 +23,18 @@ def create_post():
     
     uid=request.json["uid"]
     
-    with Session(common.database) as session:
-        availability=tables.Availability()
-        session.add(availability)
+    availability=tables.Availability()
+    session.add(availability)
 
-        session.commit() #So we can get an id
-        
-        availability.buisness=uid
-        availabilities.assign_json_to_availability(availability, request.json)
-                    
-        session.commit()
+    session.commit() #So we can get an id
+    
+    availability.buisness=uid
+    availabilities.assign_json_to_availability(availability, request.json)
+                
+    session.commit()
 
-        if availability.available==False: #A block
-            availabilities.reassign_or_cancel_bookings(session, availability)
+    if availability.available==False: #A block
+        availabilities.reassign_or_cancel_bookings(availability)
         
     return result
 
@@ -44,30 +42,29 @@ def create_post():
 def availability_info():
     result={}
     
-    with Session(common.database) as session:
-        availability=session.get(tables.Availability, request.json["id"])
-        
-        if availability is None:
-            result["error"]="NOT_FOUND"
-            return result
-        
-        timezone=ZoneInfo(request.json.get("timezone","UTC"))
-        
-        for col in availability.__mapper__.attrs.keys():
-            value=getattr(availability,col)
-            if col=="id":
-                continue
-            elif col.endswith("_datetime"):
-                value=value.astimezone(timezone).strftime(common.DATETIME_FORMAT)
-            elif col.endswith("_time"):
-                value=value.astimezone(timezone).isoformat()
-            elif col=="days_supported":
-                value=[NUM_TO_DAY[i] for i in range(len(NUM_TO_DAY)) if value & (1 << i) != 0 ]
-            if col=="services":
-                query=select(tables.Availability_to_Service.service).where(tables.Availability_to_Service.availability==availability.id)
-                value=session.scalars(query).all()
-                
-            result[col]=value
+    availability=session.get(tables.Availability, request.json["id"])
+    
+    if availability is None:
+        result["error"]="NOT_FOUND"
+        return result
+    
+    timezone=ZoneInfo(request.json.get("timezone","UTC"))
+    
+    for col in availability.__mapper__.attrs.keys():
+        value=getattr(availability,col)
+        if col=="id":
+            continue
+        elif col.endswith("_datetime"):
+            value=value.astimezone(timezone).strftime(common.DATETIME_FORMAT)
+        elif col.endswith("_time"):
+            value=value.astimezone(timezone).isoformat()
+        elif col=="days_supported":
+            value=[NUM_TO_DAY[i] for i in range(len(NUM_TO_DAY)) if value & (1 << i) != 0 ]
+        if col=="services":
+            query=select(tables.Availability_to_Service.service).where(tables.Availability_to_Service.availability==availability.id)
+            value=session.scalars(query).all()
+            
+        result[col]=value
     return result
 
 @app.route("/availabilities/edit")
@@ -101,34 +98,33 @@ def availability_search():
     
     length=request.json.get("length", 50)
     
-    with Session(common.database) as session:
-        query=select(tuple_(tables.Availability.buisness, tables.User.zip_code).distinct()).join(tables.User, tables.Availability.buisness==tables.User.id).where(availabilities.get_availabilities_in_range(session, start_datetime, end_datetime, services))
-        
-        rows=[]
-         
-        for row in session.execute(query).all():
-            if availabilities.check_for_conflict(session, start_datetime, end_datetime, row[0]):
-                result["error"]="CONFLICT"
-                return result
-                
-            if zip_code is None:
-                rows.append((row[0], 0)) #Assume that the distance is 0
-            else:
-                rows.append((row[0], dist.query_postal_code(zip_code, row[1])))
-        
-        if zip_code is not None:
-            rows.sort(reverse=True, key= lambda row: row[1])
-        
-        end=min(start+length+1, len(rows))
-        rows=rows[start: end]
+    query=select(tuple_(tables.Availability.buisness, tables.User.zip_code).distinct()).join(tables.User, tables.Availability.buisness==tables.User.id).where(availabilities.get_availabilities_in_range(session, start_datetime, end_datetime, services))
     
-        businesses, distances = zip(*rows)
-        
-        result["businesses"]=list(businesses)
-        result["distances"]=list(distances)
-        result["end"]=end
-        
-        return result
+    rows=[]
+     
+    for row in session.execute(query).all():
+        if availabilities.check_for_conflict(session, start_datetime, end_datetime, row[0]):
+            result["error"]="CONFLICT"
+            return result
+            
+        if zip_code is None:
+            rows.append((row[0], 0)) #Assume that the distance is 0
+        else:
+            rows.append((row[0], dist.query_postal_code(zip_code, row[1])))
+    
+    if zip_code is not None:
+        rows.sort(reverse=True, key= lambda row: row[1])
+    
+    end=min(start+length+1, len(rows))
+    rows=rows[start: end]
+
+    businesses, distances = zip(*rows)
+    
+    result["businesses"]=list(businesses)
+    result["distances"]=list(distances)
+    result["end"]=end
+    
+    return result
 
 @app.route("/upload")
 @common.authenticate
@@ -146,18 +142,17 @@ def image_upload():
         result["error"]="FILE_TOO_LARGE"
         return result
 
-    with Session(common.database) as session:
-        upload=tables.Upload()
-                
-        upload.type=type
-        
-        session.add(upload)
-        session.commit()
-        
-        media.save(os.path.join(media_folder, str(upload.id)))
+    upload=tables.Upload()
             
-        result["id"]=upload.id
-        return result
+    upload.type=type
+    
+    session.add(upload)
+    session.commit()
+    
+    media.save(os.path.join(media_folder, str(upload.id)))
+        
+    result["id"]=upload.id
+    return result
     
 @app.route("/media")
 def image():
@@ -165,7 +160,7 @@ def image():
     id=request.json["id"]
     
     media_folder = os.path.join(current_app.root_path,"static","media")
-    with Session(common.database) as session:
-        type=session.scalars(select(tables.Upload.type).where(tables.Upload.id==id).limit(1)).first()
+    
+    type=session.scalars(select(tables.Upload.type).where(tables.Upload.id==id).limit(1)).first()
         
     return send_file(os.path.join(media_folder, str(id)), mimetype=type)

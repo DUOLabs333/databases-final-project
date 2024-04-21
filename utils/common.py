@@ -5,13 +5,15 @@ import sys,os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..")))
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import scoped_session, sessionmaker
 from flask import Flask, request
 from flask_cors import CORS
 from zoneinfo import ZoneInfo
-from utils import tables
 
 database = create_engine("sqlite:///test_db.db")
+session=scoped_session(sessionmaker(bind=database))
+
+from utils import tables
 
 app=Flask("backend_server")
 
@@ -45,12 +47,11 @@ def authentication_wrapper(uid, password, func):
    if uid==-1 and password=="root": #Hardcoded in, so we can bootstrap populating the table (and avoid a catch-22)
        has_access=True
    else:
-       with Session(database) as session:
-           user=session.get(tables.User,uid)
-           if user is None:
-               return {"error": "USER_NOT_FOUND"}
+       user=session.get(tables.User,uid)
+       if user is None:
+           return {"error": "USER_NOT_FOUND"}
 
-           has_access=(user.password_hash==pass_hash(password,user.password_salt))
+       has_access=(user.password_hash==pass_hash(password,user.password_salt))
    
    if not has_access:
        return {"error":"PASSWORD_INCORRECT"}
