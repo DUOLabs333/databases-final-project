@@ -1,10 +1,10 @@
 from utils import tables
-from utils.common import session
+import utils.common as common
 
 from sqlalchemy import select
 
 def checkIfUsernameExists(username): #You must have the USERS database locked, and you must not unlock it until you placed the (new) username into the database
-    return session.scalars(select(tables.User.id).where(tables.User.username==username)).first() is not None
+    return common.session.scalars(select(tables.User.id).where(tables.User.username==username)).first() is not None
 
 def assign_json_to_user(user, data):
     for col in user.__mapper__.attrs.keys():

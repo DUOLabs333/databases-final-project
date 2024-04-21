@@ -27,6 +27,7 @@ def populate():
     result={}
     faker=Faker()
     uid=request.json["uid"]
+    print(uid)
     if uid!=-1:
         result["error"]="INSUFFICIENT_PERMISSION"
         return result
