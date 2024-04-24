@@ -67,7 +67,7 @@ class Availability(BaseTable):
     
     @hybrid_method
     def in_the_same_week(self, datetime):
-        return -(self.start_datetime.replace(month=datetime.month, year=datetime.year).timestamp()-datetime.timestamp()) <= 7*24*60*60
+        return extract("day", self.start_time) <= 7
     
     @hybrid_method
     def on_the_right_day(self, datetime):
