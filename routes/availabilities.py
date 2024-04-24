@@ -98,7 +98,7 @@ def availability_search():
     
     length=request.json.get("length", 50)
     
-    query=select(tuple_(tables.Availability.buisness, tables.User.zip_code).distinct()).join(tables.User, tables.Availability.buisness==tables.User.id).where(availabilities.get_availabilities_in_range(session, start_datetime, end_datetime, services))
+    query=select(tuple_(tables.Availability.buisness, tables.User.zip_code).distinct()).join(tables.User, tables.Availability.buisness==tables.User.id).where(availabilities.get_availabilities_in_range(start_datetime, end_datetime, services))
     
     rows=[]
      
