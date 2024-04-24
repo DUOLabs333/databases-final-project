@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 from sqlalchemy.ext.hybrid import hybrid_method, hybrid_property
-from sqlalchemy import ForeignKey, case, true, select, inspect
+from sqlalchemy import ForeignKey, case, true, select, inspect, extract
 from sqlalchemy.types import DateTime
 from datetime import datetime as Datetime
 from datetime import time as Time
