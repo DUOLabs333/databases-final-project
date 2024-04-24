@@ -90,14 +90,14 @@ class Availability(BaseTable):
     def on_the_right_day(self, datetime):
         return case(
             (self.repetition=="DAILY", True),
-            (self.repetition=="ONETIME", (self.start_datetime.year==datetime.year) & (self.start_datetime.month==datetime.month) & (self.start_datetime.day==datetime.day)),
+            (self.repetition=="ONETIME", (extract("year",self.start_datetime)==datetime.year) & (extract("month",self.start_datetime)==datetime.month) & (extract("day",self.start_datetime)==datetime.day)),
             else_ = self.day_of_week_is_supported(datetime) &
             case(
                 (self.repetition=="WEEKLY", True),
                 else_ = self.in_the_same_week(datetime) &
                 case(
                     (self.repetition=="MONTHLY", True),
-                    (self.repetition=="YEARLY", (self.start_datetime.month==datetime.month))
+                    (self.repetition=="YEARLY", (extract("month",self.start_datetime)==datetime.month))
                 )
             )
         )
