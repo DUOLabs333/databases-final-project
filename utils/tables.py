@@ -107,6 +107,7 @@ class Availability(BaseTable):
     def time_period_contains(self, datetime):
         return self.date_within_start_and_end(datetime) & self.time_within_start_and_end(datetime) & self.on_the_right_day(datetime)
     
+    @classmethod
     def has_service_expression(self, service):
         services_clause= true()
         for key in service:
