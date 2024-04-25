@@ -115,10 +115,10 @@ def availability_search():
     if zip_code is not None:
         rows.sort(reverse=True, key= lambda row: row[1])
     
-    end=min(start+length+1, len(rows))
+    end=min(start+length+1, len(rows)) #The index of the last element that will be returned 
     rows=rows[start: end]
-    print(rows)
-    businesses, distances = zip(*rows)
+    
+    businesses, distances = zip(*rows) or ((), ()) #Short-circuit in case of empty rows
     
     result["businesses"]=list(businesses)
     result["distances"]=list(distances)
