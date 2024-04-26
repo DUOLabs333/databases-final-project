@@ -118,7 +118,7 @@ def availability_search():
     end=min(start+length+1, len(rows)) #The index of the last element that will be returned 
     rows=rows[start: end]
     
-    businesses, distances = zip(*rows) or ((), ()) #Short-circuit in case of empty rows
+    businesses, distances = list(zip(*rows)) or ((), ()) #Short-circuit in case of empty rows
     
     result["businesses"]=list(businesses)
     result["distances"]=list(distances)
