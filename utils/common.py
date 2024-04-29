@@ -32,7 +32,7 @@ def post_wrap(func):
 
 setattr(app,"route",post_wrap(app.route))
             
-CORS(app)
+CORS(app, send_wildcard=True)
 
 import functools, hashlib, random, string
 
