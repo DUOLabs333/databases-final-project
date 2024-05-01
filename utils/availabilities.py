@@ -85,7 +85,7 @@ def cancel_all_blocked_bookings(block): #Cancel all bookings that conflict with 
             cancel_booking(booking)
 
 def check_for_conflict(start_datetime, end_datetime, business, booking_id=None):
-    query=select(tables.Availability.id).where(get_availabilities_in_range(start_datetime, end_datetime, {}, business) & tables.Availability.available==False).limit(1) #See if there's a block that conflicts with the proposed time period
+    query=select(tables.Availability.id).where(get_availabilities_in_range(start_datetime, end_datetime, {}, business, available=False)).limit(1) #See if there's a block that conflicts with the proposed time period
 
     if session.scalars(query).first() is not None:
         return True
@@ -94,9 +94,9 @@ def check_for_conflict(start_datetime, end_datetime, business, booking_id=None):
     
     return session.scalars(query).first() is not None
           
-def get_availabilities_in_range(start_datetime, end_datetime, services, business=None): #Should work --- since bookings must take place within one day, and availabilities on the same day are contiguous, if two points are within the availability, then availability exists between them (Intermediate value theorem)
+def get_availabilities_in_range(start_datetime, end_datetime, services, business=None, available=True): #Should work --- since bookings must take place within one day, and availabilities on the same day are contiguous, if two points are within the availability, then availability exists between them (Intermediate value theorem)
     
-    return tables.Availability.time_period_contains(start_datetime) & tables.Availability.time_period_contains(end_datetime) & tables.Availability.has_service(services) & (tables.Availability.business==business if business is not None else true()) & tables.Availability.available
+    return tables.Availability.time_period_contains(start_datetime) & tables.Availability.time_period_contains(end_datetime) & tables.Availability.has_service(services) & (tables.Availability.business==business if business is not None else true()) & (tables.Availability.available==available)
 
 def availability_change(request, method):
     result={}

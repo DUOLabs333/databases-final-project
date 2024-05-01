@@ -41,8 +41,8 @@ class Availability(BaseTable):
     business: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
 
     available: Mapped[bool] = mapped_column(default=True) #False for blocked
-    start_datetime: Mapped[Datetime] = mapped_column(DateTime(timezone=True))
-    end_datetime: Mapped[Datetime] = mapped_column(DateTime(timezone=True), default=datetime.datetime.max.replace(tzinfo=ZoneInfo("UTC")))
+    start_datetime: Mapped[Datetime]
+    end_datetime: Mapped[Datetime] = mapped_column(default=datetime.datetime.max.replace(tzinfo=ZoneInfo("UTC")))
     days_supported: Mapped[int] = mapped_column(default=2**7-1) #Bitstring of 7 bits
     start_time: Mapped[Time]
     end_time: Mapped[Time]
@@ -110,7 +110,6 @@ class Availability(BaseTable):
     @classmethod
     def has_service_expression(self, service):
         services_clause= true()
-        print(service)
         for key in service:
             services_clause &= (getattr(Service,key)==service[key]) #service is a dictionary with keys that match the columns in the Service table
 
@@ -135,6 +134,7 @@ class Booking(BaseTable):
     code: Mapped[int] #Must be random
     timestamp: Mapped[Datetime]
     
+    @classmethod
     def business_expression(self):
         return select(Availability.business).join_from(Availability_to_Service, Availability, Availability_to_Service.availability==Availability.id).where(Availability_to_Service.id==self.availability_to_service).limit(1)
 

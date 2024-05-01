@@ -77,7 +77,7 @@ def availability_edit():
 def availability_delete():     
     return availabilities.availability_change(request, "delete")
 
-dist = pgeocode.GeoDistance('US')
+dist = pgeocode.GeoDistance('US') #We will have to find a way to support other countries dynamically
 
 @app.route("/availabilities/search")
 def availability_search():
@@ -99,13 +99,12 @@ def availability_search():
     length=request.json.get("length", 50)
     
     query=select(tables.Availability.business, tables.User.zip_code).distinct().join(tables.User, tables.Availability.business==tables.User.id).where(availabilities.get_availabilities_in_range(start_datetime, end_datetime, services))
-    
+
     rows=[]
      
     for row in session.execute(query).all():
         if availabilities.check_for_conflict(start_datetime, end_datetime, row[0]):
-            result["error"]="CONFLICT"
-            return result
+            continue #Obviously, if this would create a conflict with a business, you can not use it
             
         if zip_code is None:
             rows.append((row[0], 0)) #Assume that the distance is 0

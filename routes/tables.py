@@ -27,7 +27,7 @@ def populate():
     result={}
     faker=Faker()
     uid=request.json["uid"]
-    print(uid)
+
     if uid!=-1:
         result["error"]="INSUFFICIENT_PERMISSION"
         return result
@@ -72,7 +72,11 @@ def populate():
             availability.id=faker.unique.pyint()
             availabilities_list.append(availability.id)
             
-            availability.available=faker.pybool()
+            if(request.json.get("disable_conflicts",True)):
+                availability.available=True #No availability is a block
+            else:
+                availability.available=faker.pybool()
+
             availability.business=faker.random_element(elements=users_list)
             availability.start_datetime=faker.date_time(tzinfo=UTC)
             availability.end_datetime=faker.date_time_between(start_date=availability.start_datetime, end_date=MAX_DATETIME)
@@ -112,6 +116,9 @@ def populate():
             session.add(availability_to_service)
 
         for _ in range(NUM_ROWS):
+            if (request.json.get("disable_conflicts",True)):
+                continue #Can't conflict with bookings that don't exist
+
             booking=tables.Booking()
             booking.author=faker.random_element(elements=users_list)
             
