@@ -110,6 +110,7 @@ class Availability(BaseTable):
     @classmethod
     def has_service_expression(self, service):
         services_clause= true()
+        print(service)
         for key in service:
             services_clause &= (getattr(Service,key)==service[key]) #service is a dictionary with keys that match the columns in the Service table
 

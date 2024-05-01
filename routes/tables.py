@@ -77,8 +77,14 @@ def populate():
             availability.start_datetime=faker.date_time(tzinfo=UTC)
             availability.end_datetime=faker.date_time_between(start_date=availability.start_datetime, end_date=MAX_DATETIME)
             availability.days_supported=faker.pyint(max_value=2**7-1)
-            availability.start_time=faker.time_object()
-            availability.end_time=faker.time_object()
+
+            times=[faker.time_object(), faker.time_object()]
+            times.sort() #start_time should be earlier than end_time
+
+            availability.start_time=times[0]
+            availability.end_time=times[1]
+
+
             availability.repetition=faker.random_element(elements=REPETITIONS)
             
             session.add(availability)

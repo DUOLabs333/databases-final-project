@@ -103,7 +103,7 @@ def availability_search():
     rows=[]
      
     for row in session.execute(query).all():
-        if availabilities.check_for_conflict(session, start_datetime, end_datetime, row[0]):
+        if availabilities.check_for_conflict(start_datetime, end_datetime, row[0]):
             result["error"]="CONFLICT"
             return result
             

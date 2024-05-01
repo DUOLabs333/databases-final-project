@@ -61,7 +61,7 @@ def reassign_or_cancel_bookings(availability): #Handle all bookings that are cur
         new_availability=session.scalars(sub_query).first()
         
         
-        if (new_availability is not None) and (not check_for_conflict(session, booking.start_datetime, booking.end_datetime, availability.business)): #If such an availability exists and does not conflict with any blocks/other bookings
+        if (new_availability is not None) and (not check_for_conflict(booking.start_datetime, booking.end_datetime, availability.business)): #If such an availability exists and does not conflict with any blocks/other bookings
             booking.availability_to_service=new_availability.id
         else:
             cancel_booking(booking) #No way to keep the booking
@@ -85,7 +85,7 @@ def cancel_all_blocked_bookings(block): #Cancel all bookings that conflict with 
             cancel_booking(booking)
 
 def check_for_conflict(start_datetime, end_datetime, business, booking_id=None):
-    query=select(tables.Availability.id).where(get_availabilities_in_range(start_datetime, end_datetime, tables.Service.services_dict, business) & tables.Availability.available==False).limit(1) #See if there's a block that conflicts with the proposed time period
+    query=select(tables.Availability.id).where(get_availabilities_in_range(start_datetime, end_datetime, {}, business) & tables.Availability.available==False).limit(1) #See if there's a block that conflicts with the proposed time period
 
     if session.scalars(query).first() is not None:
         return True
