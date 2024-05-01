@@ -25,7 +25,16 @@ SERVICES=["DETAILING", "GENERAL_WASH","BRAKE_FLUID"]
 @common.authenticate
 def populate():
     result={}
-    faker=Faker()
+    faker=Faker() 
+    """
+    By default, it is localized to US English (ie, "en_US"), but in the future, we could randomize the locale when generating data.
+    
+    However, if we do so, we would need another attribute for tables.User; namely, country_code, which will default to "US". 
+    
+    This will be useful for two reasons --- one, when searching for availabilities, we can filter the results to only match the country code of the user searching (which will also mean that availabilities/search will require login) --- this makes sense as you likely don't want to visit a shop in another country.
+
+    Additionally, we can use the country code when calculating distance --- right now, it is hardcoded to the US, but that can obviously change, so we need to be able to dynamically set the country when calculating distances
+    """
     uid=request.json["uid"]
 
     if uid!=-1:

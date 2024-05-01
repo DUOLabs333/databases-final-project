@@ -77,7 +77,7 @@ def availability_edit():
 def availability_delete():     
     return availabilities.availability_change(request, "delete")
 
-dist = pgeocode.GeoDistance('US') #We will have to find a way to support other countries dynamically
+dist = pgeocode.GeoDistance('US') #We will have to find a way to support other countries dynamically (probably need another field in user for country)
 
 @app.route("/availabilities/search")
 def availability_search():
