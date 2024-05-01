@@ -38,7 +38,7 @@ class Message(BaseTable): #Holds administrative messages and notifications of pe
 class Availability(BaseTable):
     __tablename__ = "AVAILABILITIES"
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
-    buisness: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
+    business: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
 
     available: Mapped[bool] = mapped_column(default=True) #False for blocked
     start_datetime: Mapped[Datetime] = mapped_column(DateTime(timezone=True))
@@ -134,16 +134,16 @@ class Booking(BaseTable):
     code: Mapped[int] #Must be random
     timestamp: Mapped[Datetime]
     
-    def buisness_expression(self):
-        return select(Availability.buisness).join_from(Availability_to_Service, Availability, Availability_to_Service.availability==Availability.id).where(Availability_to_Service.id==self.availability_to_service).limit(1)
+    def business_expression(self):
+        return select(Availability.business).join_from(Availability_to_Service, Availability, Availability_to_Service.availability==Availability.id).where(Availability_to_Service.id==self.availability_to_service).limit(1)
 
     @hybrid_property
-    def buisness(self):
-        return session.scalars(self.buisness_expression()).first()
+    def business(self):
+        return session.scalars(self.business_expression()).first()
 
-    @buisness.expression
-    def buisness(self):
-        return self.buisness_expression().scalar_subquery()
+    @business.expression
+    def business(self):
+        return self.business_expression().scalar_subquery()
 
     
     #Later, if efficiency becomes a concern, we can add a modified time_period_contains here as is_within. However, that takes time, so I don't care right now

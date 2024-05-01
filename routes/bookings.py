@@ -44,7 +44,7 @@ def booking_info():
     
     availability_to_service=session.get(tables.Availability_to_Service, booking.availability_to_service)
                             
-    if uid not in [booking.author, booking.buisness]:
+    if uid not in [booking.author, booking.business]:
         result["error"]="INSUFFICIENT_PERMISSION"
         return result
     
@@ -52,7 +52,7 @@ def booking_info():
     
     for col in booking.__mapper__.attrs.keys():
         value=getattr(booking,col)
-        if col in ["id","buisness"]:
+        if col in ["id","business"]:
             continue
         elif col.endswith("_datetime"):
             value=value.localize(timezone).strftime(common.DATETIME_FORMAT)
@@ -102,7 +102,7 @@ def booking_cancel():
     if booking is None:
         result["error"]="DOES_NOT_EXIST"
         return result
-    elif uid not in [booking.author, booking.buisness]:
+    elif uid not in [booking.author, booking.business]:
          result["error"]="INSUFFICIENT_PERMISSION"
          return result
     
@@ -111,7 +111,7 @@ def booking_cancel():
     if (uid==booking.author and booking.start_datetime < now): #Individuals can only cancel before the start time
         result["error"]="TOO_LATE"
         return result
-    elif (uid==booking.buisness and booking.start_datetime >= now): #Buisnesses can only cancel after the appointment's start time (in case of no-shows)
+    elif (uid==booking.business and booking.start_datetime >= now): #Buisnesses can only cancel after the appointment's start time (in case of no-shows)
         result["error"]="TOO_EARLY"
         return result
     session.delete(booking)
@@ -126,12 +126,12 @@ def booking_list():
     
     uid=request.json["uid"]
 
-    query=select(tables.Booking.id).where(tables.Booking.id==uid | tables.Booking.buisness==uid)
+    query=select(tables.Booking.id).where(tables.Booking.id==uid | tables.Booking.business==uid)
     
     result["bookings"]=list(session.scalars(query).all())
     return result
 
-@app.route("/bookings/checkout") #When the appointment is over (the code is still used by the customer to authenticate themselves to the buisness when they first walk-in)
+@app.route("/bookings/checkout") #When the appointment is over (the code is still used by the customer to authenticate themselves to the business when they first walk-in)
 @common.authenticate
 def booking_checkout():
     result = {}
@@ -142,7 +142,7 @@ def booking_checkout():
     if booking is None:
         result["error"]="DOES_NOT_EXIST"
         return result
-    elif uid !=booking.buisness:
+    elif uid !=booking.business:
          result["error"]="INSUFFICIENT_PERMISSION"
          return result
     
@@ -150,7 +150,7 @@ def booking_checkout():
     checkout_message.recipient=booking.author
     checkout_message.time_posted=datetime.now(common.UTC)
     checkout_message.title="Your appointment is over"
-    checkout_message.text=f"The buisness {booking.buisness} has marked your booking {booking.id} as over. Thank you for using us!"
+    checkout_message.text=f"The business {booking.business} has marked your booking {booking.id} as over. Thank you for using us!"
     
     session.delete(booking)
     session.add(checkout_message)

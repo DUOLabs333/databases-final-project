@@ -8,7 +8,7 @@ from datetime import datetime
 def assign_json_to_booking(booking, data, create):
     timezone=ZoneInfo(data.get("timezone","UTC"))
     
-    buisness=data["buisness"]
+    business=data["business"]
     service=data["service"]
 
     for col in booking.__mapper__.attrs.keys():
@@ -18,7 +18,7 @@ def assign_json_to_booking(booking, data, create):
             continue
 
     
-        if col in ["id","author","code","service","buisness"]:
+        if col in ["id","author","code","service","business"]:
             continue
         elif col.endswith("_datetime"):
             value=datetime.strptime(value, common.DATETIME_FORMAT).replace(tzinfo=timezone).localize(common.UTC)
@@ -28,7 +28,7 @@ def assign_json_to_booking(booking, data, create):
 
     availability_to_service=session.scalars(query).first()
 
-    if (availability_to_service is None) or check_for_conflict(booking.start_datetime, booking.end_datetime, buisness, booking.id if create==False else None): #Don't create booking if there is a conflict
+    if (availability_to_service is None) or check_for_conflict(booking.start_datetime, booking.end_datetime, business, booking.id if create==False else None): #Don't create booking if there is a conflict
         return -1
 
     booking.availability_to_service=availability_to_service

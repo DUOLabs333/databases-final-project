@@ -56,12 +56,12 @@ def reassign_or_cancel_bookings(availability): #Handle all bookings that are cur
     for booking in session.scalars(query):
         service=session.get(tables.Service, session.get(tables.Availability_to_Service, booking.availability_to_service).service).services_dict #Get dictionary representing the service that the booking is booked for
 
-        sub_query=select(tables.Availability_to_Service).where(get_availabilities_in_range(booking.start_datetime, booking.end_datetime, service, availability.buisness)).limit(1) #Get the first availability that matches the booking's services
+        sub_query=select(tables.Availability_to_Service).where(get_availabilities_in_range(booking.start_datetime, booking.end_datetime, service, availability.business)).limit(1) #Get the first availability that matches the booking's services
 
         new_availability=session.scalars(sub_query).first()
         
         
-        if (new_availability is not None) and (not check_for_conflict(session, booking.start_datetime, booking.end_datetime, availability.buisness)): #If such an availability exists and does not conflict with any blocks/other bookings
+        if (new_availability is not None) and (not check_for_conflict(session, booking.start_datetime, booking.end_datetime, availability.business)): #If such an availability exists and does not conflict with any blocks/other bookings
             booking.availability_to_service=new_availability.id
         else:
             cancel_booking(booking) #No way to keep the booking
@@ -71,32 +71,32 @@ def cancel_booking(booking):
     cancel_message.recipient=booking.author
     cancel_message.time_posted=datetime.now(common.UTC)
     cancel_message.title="Your booking got cancelled"
-    cancel_message.text=f"Your booking {booking.id} got cancelled, as the buisness {booking.buisness} moved one of its availabilities out of the range. That's all we know."
+    cancel_message.text=f"Your booking {booking.id} got cancelled, as the business {booking.business} moved one of its availabilities out of the range. That's all we know."
     
     session.delete(booking)
     session.add(cancel_message)
     transactions.refund(booking)
 
 def cancel_all_blocked_bookings(block): #Cancel all bookings that conflict with block
-    query=select(tables.Booking).where((tables.Booking.buisness==block.buisness) & ((tables.Booking.start_datetime >= block.start_datetime) |  (tables.Booking.end_datetime <= block.end_datetime) ) ) #Coarse filter --- neccessary but not sufficient condition (also lets me avoid remaking all of the availability-matching code)
+    query=select(tables.Booking).where((tables.Booking.business==block.business) & ((tables.Booking.start_datetime >= block.start_datetime) |  (tables.Booking.end_datetime <= block.end_datetime) ) ) #Coarse filter --- neccessary but not sufficient condition (also lets me avoid remaking all of the availability-matching code)
     
     for booking in session.scalars(query).all():
-        if block.time_period_contains(booking): #Maybe add has_service check later if buisnesses want to have a block for certain services?
+        if block.time_period_contains(booking): #Maybe add has_service check later if businesses want to have a block for certain services?
             cancel_booking(booking)
 
-def check_for_conflict(start_datetime, end_datetime, buisness, booking_id=None):
-    query=select(tables.Availability.id).where(get_availabilities_in_range(start_datetime, end_datetime, tables.Service.services_dict, buisness) & tables.Availability.available==False).limit(1) #See if there's a block that conflicts with the proposed time period
+def check_for_conflict(start_datetime, end_datetime, business, booking_id=None):
+    query=select(tables.Availability.id).where(get_availabilities_in_range(start_datetime, end_datetime, tables.Service.services_dict, business) & tables.Availability.available==False).limit(1) #See if there's a block that conflicts with the proposed time period
 
     if session.scalars(query).first() is not None:
         return True
     
-    query=select(tables.Booking).where( (tables.Booking.buisness==buisness) & ((tables.Booking.start_datetime >= start_datetime) |  (tables.Booking.end_datetime <= end_datetime) ) & (tables.Booking.id != booking_id if booking_id is not None else true()) ) #See if there's any other booking that conflicts with the time period
+    query=select(tables.Booking).where( (tables.Booking.business==business) & ((tables.Booking.start_datetime >= start_datetime) |  (tables.Booking.end_datetime <= end_datetime) ) & (tables.Booking.id != booking_id if booking_id is not None else true()) ) #See if there's any other booking that conflicts with the time period
     
     return session.scalars(query).first() is not None
           
-def get_availabilities_in_range(start_datetime, end_datetime, services, buisness=None): #Should work --- since bookings must take place within one day, and availabilities on the same day are contiguous, if two points are within the availability, then availability exists between them (Intermediate value theorem)
+def get_availabilities_in_range(start_datetime, end_datetime, services, business=None): #Should work --- since bookings must take place within one day, and availabilities on the same day are contiguous, if two points are within the availability, then availability exists between them (Intermediate value theorem)
     
-    return tables.Availability.time_period_contains(start_datetime) & tables.Availability.time_period_contains(end_datetime) & tables.Availability.has_service(services) & (tables.Availability.buisness==buisness if buisness is not None else true()) & tables.Availability.available
+    return tables.Availability.time_period_contains(start_datetime) & tables.Availability.time_period_contains(end_datetime) & tables.Availability.has_service(services) & (tables.Availability.business==business if business is not None else true()) & tables.Availability.available
 
 def availability_change(request, method):
     result={}

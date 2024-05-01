@@ -11,7 +11,7 @@ def assign_json(service, data):
         else:
             continue
         
-        if col in ["id","buisness"]:
+        if col in ["id","business"]:
             continue
           
         setattr(service,col,value)
@@ -27,7 +27,7 @@ def modify(request, method):
     if service is None:
         result["error"]="DOES_NOT_EXIST"
         return result
-    elif uid!=service.buisness:
+    elif uid!=service.business:
          result["error"]="INSUFFICIENT_PERMISSION"
          return result
     

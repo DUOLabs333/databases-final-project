@@ -18,7 +18,7 @@ def create_service():
     
     session.commit() #So we can get an id
     
-    service.buisness=uid
+    service.business=uid
     services.assign_json(service, request.json)
                 
     session.commit()

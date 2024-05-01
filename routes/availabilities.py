@@ -28,7 +28,7 @@ def create_post():
 
     session.commit() #So we can get an id
     
-    availability.buisness=uid
+    availability.business=uid
     availabilities.assign_json_to_availability(availability, request.json)
                 
     session.commit()
@@ -98,7 +98,7 @@ def availability_search():
     
     length=request.json.get("length", 50)
     
-    query=select(tables.Availability.buisness, tables.User.zip_code).distinct().join(tables.User, tables.Availability.buisness==tables.User.id).where(availabilities.get_availabilities_in_range(start_datetime, end_datetime, services))
+    query=select(tables.Availability.business, tables.User.zip_code).distinct().join(tables.User, tables.Availability.business==tables.User.id).where(availabilities.get_availabilities_in_range(start_datetime, end_datetime, services))
     
     rows=[]
      
