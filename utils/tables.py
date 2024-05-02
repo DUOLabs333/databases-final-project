@@ -113,7 +113,7 @@ class Availability(BaseTable):
         for key in service:
             services_clause &= (getattr(Service,key)==service[key]) #service is a dictionary with keys that match the columns in the Service table
 
-        return (select(Service.id).join_from(Availability_to_Service, Service, Availability_to_Service.service==Service.id, isouter=True).where(Availability_to_Service.availability==self.id & services_clause)).exists()
+        return (select(Service.id).join_from(Availability_to_Service, Service, Availability_to_Service.service==Service.id, isouter=True).where((Availability_to_Service.availability==self.id) & services_clause)).exists()
 
     @hybrid_method
     def has_service(self, service):
