@@ -110,7 +110,7 @@ def populate():
             is_repair=faker.pybool()
             if is_repair:
                 service.device=faker.random_element(elements=DEVICES)
-                service.repair=faker.random_element(elements=REPAIRS)
+                service.device_repair=faker.random_element(elements=REPAIRS)
             else:
                 service.vehicle=faker.random_element(elements=VEHICLES)
                 service.vehicle_service=faker.random_element(elements=SERVICES)
