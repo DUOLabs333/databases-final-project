@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import math
 
 NUM_TO_DAY=availabilities.DAY_TO_NUM.keys()
 
@@ -109,7 +110,10 @@ def availability_search():
         if zip_code is None:
             rows.append((row[0], 0)) #Assume that the distance is 0
         else:
-            rows.append((row[0], dist.query_postal_code(zip_code, row[1])))
+            distance=dist.query_postal_code(zip_code, row[1])
+            if math.isnan(distance):
+                continue
+            rows.append((row[0], distance))
     
     if zip_code is not None:
         rows.sort(reverse=True, key= lambda row: row[1])
