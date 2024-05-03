@@ -59,11 +59,11 @@ class Availability(BaseTable):
         
     @hybrid_method
     def day_of_week_is_supported(self, datetime):
-        return self.days_supported & (1 << datetime.weekday())
+        return self.days_supported & (1 << datetime.weekday()) !=0
     
     @day_of_week_is_supported.expression
     def day_of_week_is_supported(self, datetime):
-        return self.days_supported.bitwise_and(1 << datetime.weekday())
+        return self.days_supported.bitwise_and(1 << datetime.weekday()) !=0
     
     @hybrid_method
     def in_the_same_week(self, datetime):
