@@ -5,7 +5,7 @@ from utils.common import app, session
 from utils import availabilities
 
 from flask import request, send_file, current_app
-from sqlalchemy import select, tuple_
+from sqlalchemy import select
 import pgeocode
 
 import os

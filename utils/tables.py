@@ -19,7 +19,7 @@ class User(BaseTable):
     username: Mapped[str] = mapped_column(unique=True)
     password_hash: Mapped[str]
     password_salt: Mapped[str]
-    creation_time: Mapped[Datetime]
+    creation_time: Mapped[Datetime] = mapped_column(DateTime(timezone=True))
     profile: Mapped[str] = mapped_column(default="")
     address: Mapped[str] = mapped_column(default="")
     zip_code: Mapped[str] = mapped_column(default="")
@@ -30,7 +30,7 @@ class Message(BaseTable): #Holds administrative messages and notifications of pe
     __tablename__ = "MESSAGES"
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
     recipient: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
-    time_posted: Mapped[Datetime]
+    time_posted: Mapped[Datetime] = mapped_column(DateTime(timezone=True))
     title: Mapped[str]
     text: Mapped[str]
 
@@ -42,7 +42,7 @@ class Availability(BaseTable):
 
     available: Mapped[bool] = mapped_column(default=True) #False for blocked
     start_datetime: Mapped[Datetime]
-    end_datetime: Mapped[Datetime] = mapped_column(default=datetime.datetime.max.replace(tzinfo=ZoneInfo("UTC")))
+    end_datetime: Mapped[Datetime] = mapped_column(DateTime(timezone=True), default=datetime.datetime.max.replace(tzinfo=ZoneInfo("UTC")))
     days_supported: Mapped[int] = mapped_column(default=2**7-1) #Bitstring of 7 bits
     start_time: Mapped[Time]
     end_time: Mapped[Time]

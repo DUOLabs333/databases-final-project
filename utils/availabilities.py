@@ -3,6 +3,7 @@ from sqlalchemy import true, select
 from zoneinfo import ZoneInfo
 from datetime import datetime, time
 from utils.common import session
+from utils import common
 
 DAY_TO_NUM={"MONDAY":0, "TUESDAY":1, "WEDNESDAY":2, "THURSDAY":3, "FRIDAY":4, "SATURDAY":5, "SUNDAY":6}
 
