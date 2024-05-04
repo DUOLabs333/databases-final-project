@@ -18,9 +18,9 @@ def assign_json_to_availability(availability, data):
         if col in ["id","author"]:
             continue
         if col.endswith("_datetime"):
-            value=datetime.strptime(value, common.DATETIME_FORMAT).replace(tzinfo=timezone).localize(common.UTC)
+            value=datetime.strptime(value, common.DATETIME_FORMAT).replace(tzinfo=timezone).astimezone(common.UTC)
         elif col.endswith("_time"): 
-            value=time.fromisoformat(value).replace(tzinfo=timezone).localize(common.UTC)
+            value=time.fromisoformat(value).replace(tzinfo=timezone).astimezone(common.UTC)
         elif col=="days_supported":
             bitstring=0
             

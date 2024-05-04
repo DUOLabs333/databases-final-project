@@ -55,7 +55,7 @@ def booking_info():
         if col in ["id","business"]:
             continue
         elif col.endswith("_datetime"):
-            value=value.localize(timezone).strftime(common.DATETIME_FORMAT)
+            value=value.astimezone(timezone).strftime(common.DATETIME_FORMAT)
             
         result[col]=value
     
