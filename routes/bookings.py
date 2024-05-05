@@ -126,7 +126,7 @@ def booking_list():
     
     uid=request.json["uid"]
 
-    query=select(tables.Booking.id).where(tables.Booking.id==uid | tables.Booking.business==uid)
+    query=select(tables.Booking.id).where((tables.Booking.id==uid) | (tables.Booking.business==uid))
     
     result["bookings"]=list(session.scalars(query).all())
     return result
