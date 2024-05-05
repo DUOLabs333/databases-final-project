@@ -14,18 +14,18 @@ def create_booking():
     
     uid=request.json["uid"]
     booking=tables.Booking()
-    session.add(booking)
+    
     
     booking.author=uid
     ret=bookings.assign_json_to_booking(booking, request.json, True)
     
     if ret==-1:
-        session.remove(booking)
         result["error"]="BLOCKED"
         return result
     
     bookings.code=random.randint(10000,10000000)
-
+    
+    session.add(booking)
     session.commit()
 
     transactions.create(booking)

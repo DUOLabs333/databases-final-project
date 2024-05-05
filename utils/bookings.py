@@ -19,7 +19,7 @@ def assign_json_to_booking(booking, data, create):
             continue
 
     
-        if col in ["id","author","code","service","business"]:
+        if col in ["id","author","code","availability_to_service","business"]:
             continue
         elif col.endswith("_datetime"):
             value=datetime.strptime(value, common.DATETIME_FORMAT).replace(tzinfo=timezone).astimezone(common.UTC)
@@ -33,3 +33,4 @@ def assign_json_to_booking(booking, data, create):
         return -1
 
     booking.availability_to_service=availability_to_service
+    booking.timestamp=datetime.now(common.UTC)
