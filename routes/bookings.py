@@ -23,7 +23,7 @@ def create_booking():
         result["error"]="BLOCKED"
         return result
     
-    bookings.code=random.randint(10000,10000000)
+    booking.code=random.randint(10000,10000000)
     
     session.add(booking)
     session.commit()
