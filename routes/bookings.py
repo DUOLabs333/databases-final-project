@@ -106,7 +106,7 @@ def booking_cancel():
          result["error"]="INSUFFICIENT_PERMISSION"
          return result
     
-    now=datetime.datetime.now(timezone.utc)
+    now=datetime.now(common.UTC)
     
     if (uid==booking.author and booking.start_datetime < now): #Individuals can only cancel before the start time
         result["error"]="TOO_LATE"
