@@ -19,5 +19,6 @@ def create(booking):
         return -1
 
 def refund(booking):
+    id=booking.author
     balance.AddToBalance(id, price_of_booking(session,booking))
 
