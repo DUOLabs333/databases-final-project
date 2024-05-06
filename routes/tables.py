@@ -27,7 +27,7 @@ def populate():
     result={}
     faker=Faker() 
     """
-    By default, it is astimezoned to US English (ie, "en_US"), but in the future, we could randomize the locale when generating data.
+    By default, it is localized to US English (ie, "en_US"), but in the future, we could randomize the locale when generating data.
     
     However, if we do so, we would need another attribute for tables.User; namely, country_code, which will default to "US". 
     

@@ -10,7 +10,6 @@ import pgeocode
 
 import os
 from pathlib import Path
-from datetime import datetime
 from zoneinfo import ZoneInfo
 import math
 
@@ -56,9 +55,11 @@ def availability_info():
         if col=="id":
             continue
         elif col.endswith("_datetime"):
-            value=value.astimezone(timezone).strftime(common.DATETIME_FORMAT)
+            value=common.convert_from_datetime(value, timezone)
+            
         elif col.endswith("_time"):
-            value=value.astimezone(timezone).isoformat()
+            value=common.convert_from_datetime(value, timezone, time=True)
+
         elif col=="days_supported":
             value=[NUM_TO_DAY[i] for i in range(len(NUM_TO_DAY)) if value & (1 << i) != 0 ]
         if col=="services":
@@ -87,10 +88,9 @@ def availability_search():
     
     timezone=ZoneInfo(request.json.get("timezone","UTC"))
     
-    start_datetime=datetime.strptime(request.json["start_datetime"], common.DATETIME_FORMAT).replace(tzinfo=timezone).astimezone(common.UTC)
-    
-    end_datetime=datetime.strptime(request.json["end_datetime"], common.DATETIME_FORMAT).replace(tzinfo=timezone).astimezone(common.UTC)
-    
+    start_datetime=common.convert_to_datetime(request.json["start_datetime"], timezone)
+
+    end_datetime=common.convert_to_datetime(request.json["end_datetime"], timezone)    
     services=request.json["services"]
     
     zip_code=request.json.get("zip_code", None)

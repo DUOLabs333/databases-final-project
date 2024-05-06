@@ -34,10 +34,27 @@ setattr(app,"route",post_wrap(app.route))
             
 CORS(app)
 
-import functools, hashlib, random, string
+import functools, hashlib, random, string, datetime
 
 UTC=ZoneInfo("UTC")
 DATETIME_FORMAT="%Y-%m-%d %H:%M:%S.%f"
+
+def convert_to_datetime(value, timezone, time=False):
+    if time:
+        value=datetime.time.fromisoformat(value)
+    else:
+        value=datetime.datetime.strptime(value, DATETIME_FORMAT)
+
+    return value.replace(tzinfo=timezone).astimezone(UTC).replace(tzinfo=None)
+
+def convert_from_datetime(value, timezone, time=False):
+    value=value.replace(tzinfo=UTC).astimezone(timezone)
+
+    if time:
+        value=value.isoformat()
+    else:
+        value=value.strftime(DATETIME_FORMAT)
+    return value
 
 def pass_hash(password, salt):
     return hashlib.sha256((password+salt).encode("utf-8")).hexdigest()

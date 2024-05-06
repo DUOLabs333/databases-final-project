@@ -1,7 +1,7 @@
 from utils import tables, transactions
 from sqlalchemy import true, select
 from zoneinfo import ZoneInfo
-from datetime import datetime, time
+from datetime import datetime
 from utils.common import session
 from utils import common
 
@@ -18,9 +18,9 @@ def assign_json_to_availability(availability, data):
         if col in ["id","author"]:
             continue
         if col.endswith("_datetime"):
-            value=datetime.strptime(value, common.DATETIME_FORMAT).replace(tzinfo=timezone).astimezone(common.UTC)
+            value=common.convert_to_datetime(value, timezone)
         elif col.endswith("_time"): 
-            value=time.fromisoformat(value).replace(tzinfo=timezone).astimezone(common.UTC)
+            value=common.convert_to_datetime(value, timezone, time=True)
         elif col=="days_supported":
             bitstring=0
             
@@ -52,7 +52,7 @@ def assign_json_to_availability(availability, data):
         setattr(availability,col,value)
         
 def reassign_or_cancel_bookings(availability): #Handle all bookings that are currently attached to an availability (availability may be deleted or edited, so all child bookings have to be upgraded to match)
-    query=select(tables.Booking).join(tables.Availability_to_Service, tables.Booking.availability_to_service==tables.Availability_to_Service.id).where((tables.Availability_to_Service.availability==availability.id) & (tables.Booking.start_datetime < datetime.now(common.UTC))) #Get all bookings that use <availability>
+    query=select(tables.Booking).join(tables.Availability_to_Service, tables.Booking.availability_to_service==tables.Availability_to_Service.id).where((tables.Availability_to_Service.availability==availability.id) & (tables.Booking.start_datetime < datetime.now())) #Get all bookings that use <availability>
     
     for booking in session.scalars(query):
         service=session.get(tables.Service, session.get(tables.Availability_to_Service, booking.availability_to_service).service).services_dict #Get dictionary representing the service that the booking is booked for
@@ -70,7 +70,7 @@ def reassign_or_cancel_bookings(availability): #Handle all bookings that are cur
 def cancel_booking(booking):                                                            
     cancel_message=tables.Message()
     cancel_message.recipient=booking.author
-    cancel_message.time_posted=datetime.now(common.UTC)
+    cancel_message.time_posted=datetime.now()
     cancel_message.title="Your booking got cancelled"
     cancel_message.text=f"Your booking {booking.id} got cancelled, as the business {booking.business} moved one of its availabilities out of the range. That's all we know."
     

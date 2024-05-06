@@ -2,8 +2,8 @@ from utils import common, tables, transactions
 from utils.common import app, session
 from utils import bookings
 from flask import request
+from datetime import datetime
 from sqlalchemy import select
-from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import random
 
@@ -55,7 +55,7 @@ def booking_info():
         if col in ["id","business"]:
             continue
         elif col.endswith("_datetime"):
-            value=value.astimezone(timezone).strftime(common.DATETIME_FORMAT)
+            value=common.convert_from_datetime(value, timezone)
             
         result[col]=value
     
@@ -106,7 +106,7 @@ def booking_cancel():
          result["error"]="INSUFFICIENT_PERMISSION"
          return result
     
-    now=datetime.now(common.UTC)
+    now=datetime.now()
     
     if (uid==booking.author and booking.start_datetime < now): #Individuals can only cancel before the start time
         result["error"]="TOO_LATE"
@@ -148,7 +148,7 @@ def booking_checkout():
     
     checkout_message=tables.Message()
     checkout_message.recipient=booking.author
-    checkout_message.time_posted=datetime.now(common.UTC)
+    checkout_message.time_posted=datetime.now()
     checkout_message.title="Your appointment is over"
     checkout_message.text=f"The business {booking.business} has marked your booking {booking.id} as over. Thank you for using us!"
     

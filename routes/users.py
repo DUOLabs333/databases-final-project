@@ -53,7 +53,7 @@ def info():
         value=getattr(user,col)
         result[col]=value
     
-    result["creation_time"]=user.creation_time.strftime(common.DATETIME_FORMAT)
+    result["creation_time"]=common.convert_from_datetime(value, common.UTC)
     return result
         
 @app.route("/users/edit")
