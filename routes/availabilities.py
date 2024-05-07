@@ -99,32 +99,30 @@ def availability_search():
     
     length=request.json.get("length", 50)
     
-    query=select(tables.Availability.business, tables.User.zip_code).distinct().join(tables.User, tables.Availability.business==tables.User.id).where(availabilities.get_availabilities_in_range(start_datetime, end_datetime, services))
+    query=select(tables.Availability_to_Service.id, tables.Availability.business, tables.User.zip_code, tables.Service.price).join_from(tables.Availability, tables.Availability_to_Service, tables.Availability.id==tables.Availability_to_Service.availability).join(tables.User, tables.Availability.business==tables.User.id).join(tables.Service, tables.Availability_to_Service.service==tables.Service.id).where(availabilities.get_availabilities_in_range(start_datetime, end_datetime, services) & tables.Availability.services_clause(services))
 
     rows=[]
      
     for row in session.execute(query).all():
-        if availabilities.check_for_conflict(start_datetime, end_datetime, row[0]):
+        if availabilities.check_for_conflict(start_datetime, end_datetime, row[1]):
             continue #Obviously, if this would create a conflict with a business, you can not use it
-            
-        if zip_code is None:
-            rows.append((row[0], 0)) #Assume that the distance is 0
-        else:
+        
+        distance=0
+
+        if zip_code:
             distance=dist.query_postal_code(zip_code, row[1])
             if math.isnan(distance):
                 continue
-            rows.append((row[0], distance))
+
+        row_keys=["availability_to_service", "business", "distance", "price"]
+        rows.append({row_keys[i]: row[i] for i in range(len(row))})
     
     if zip_code is not None:
-        rows.sort(reverse=True, key= lambda row: row[1])
+        rows.sort(reverse=True, key= lambda row: row["distance"])
     
-    end=min(start+length+1, len(rows)) #The index of the last element that will be returned 
-    rows=rows[start: end]
-    
-    businesses, distances = list(zip(*rows)) or ((), ()) #Short-circuit in case of empty rows
-    
-    result["businesses"]=list(businesses)
-    result["distances"]=list(distances)
+    end=min(start+length+1, len(rows)) #The index of the last element that will be returned
+
+    result["info"]=rows[start: end]
     result["end"]=end
     
     return result

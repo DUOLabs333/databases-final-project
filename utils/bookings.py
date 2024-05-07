@@ -6,11 +6,8 @@ from sqlalchemy import select
 from zoneinfo import ZoneInfo
 from datetime import datetime
 
-def assign_json_to_booking(booking, data, create):
+def assign_json_to_booking(booking, data):
     timezone=ZoneInfo(data.get("timezone","UTC"))
-    
-    business=data["business"]
-    service=data["service"]
 
     for col in booking.__mapper__.attrs.keys():
         if col in data:
@@ -19,18 +16,30 @@ def assign_json_to_booking(booking, data, create):
             continue
 
     
-        if col in ["id","author","code","availability_to_service","business"]:
+        if col in ["id","author","code","business"]:
             continue
         elif col.endswith("_datetime"):
             value=common.convert_to_datetime(value, timezone)
         setattr(booking,col,value)
-   
-    query=select(tables.Availability_to_Service.id).join_from(tables.Availability_to_Service, tables.Availability, tables.Availability_to_Service.availability==tables.Availability.id).where(tables.Availability.time_period_contains(booking.start_datetime) & tables.Availability.time_period_contains(booking.end_datetime) & tables.Availability.has_service(service)).limit(1)
+    
+    if not booking.id:
+        old_cost=0
 
-    availability_to_service=session.scalars(query).first()
+    availability_to_service=session.get(tables.Availability_to_Service, booking.availability_to_service)
 
-    if (availability_to_service is None) or check_for_conflict(booking.start_datetime, booking.end_datetime, business, booking.id if create==False else None): #Don't create booking if there is a conflict
+    availability=session.get(tables.Availability, availability_to_service.availability)
+    business=availability.business
+
+    service=session.get(tables.Service, availability_to_service.service)
+    booking.cost=service.price
+    cost=booking.cost-old_cost
+
+    
+    ret=transactions.create(booking, cost)
+    if ret==-1:
+        return ret
+
+    if check_for_conflict(booking.start_datetime, booking.end_datetime, business, booking.id): #Don't create booking if there is a conflict
         return -1
-
-    booking.availability_to_service=availability_to_service
+    
     booking.timestamp=datetime.now(common.UTC)

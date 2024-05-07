@@ -2,23 +2,30 @@ from utils import tables, balance
 from sqlalchemy import select
 from utils.common import session
 
-def price_of_booking(session,booking):
-    query=select(tables.Service.price).join_from(tables.Availability_to_Service, tables.Service, tables.Availability_to_Service.service==tables.Service.id).where(tables.Availability_to_Service.id==booking.availability_to_service)
+def create(booking, amount):
+    user_id=booking.author
+    business_id=session.get(tables.Availability, session.get(tables.Availability_to_Service, booking.availability_to_service).availability).business
 
-    price=session.scalars(query).first()
-    return price
-                                       
-def create(booking):
-    id=booking.author
-    bal=session.get(tables.Balance, id)
-    if not bal:
+    if not (session.get(tables.Balance, user_id) and session.get(tables.Balance, business_id)):
         return -1
-    ret=balance.RemoveFromBalance(id, price_of_booking(session,booking))
 
+    transaction=tables.Transaction()
+    if amount < 0: #Maybe set it up so that refunds to not incur an additional penalty on the business
+        transaction.sender=business_id
+        transaction.recipient=user_id
+        transaction.amount=-amount
+    else:
+        transaction.sender=user_id
+        transaction.recipient=business_id
+        transaction.amount=amount
+    ret=balance.RemoveFromBalance(transaction.sender, transaction.amount)
     if not ret:
         return -1
 
-def refund(booking):
-    id=booking.author
-    balance.AddToBalance(id, price_of_booking(session,booking))
+    ret=balance.AddToBalance(transaction.recipient, transaction.amount)
+    
+    session.add(transaction)
+    session.commit()
 
+def refund(booking):
+    return create(booking, -booking.cost)

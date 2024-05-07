@@ -17,7 +17,7 @@ def create_booking():
     
     
     booking.author=uid
-    ret=bookings.assign_json_to_booking(booking, request.json, True)
+    ret=bookings.assign_json_to_booking(booking, request.json)
     
     if ret==-1:
         result["error"]="BLOCKED"
@@ -79,15 +79,13 @@ def booking_edit():
          result["error"]="INSUFFICIENT_PERMISSION"
          return result
     
-    ret=bookings.assign_json_to_booking(booking, request.json, False)
+    ret=bookings.assign_json_to_booking(booking, request.json)
     
     if ret==-1:
         result["error"]="BLOCKED"
         return result
     else:
         session.commit()
-
-        transactions.create(booking) #Yes, I know that they will be charged for every edit, without a corresponding refund. No, I don't care.
         return result
 
 @app.route("/bookings/cancel")

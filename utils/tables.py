@@ -106,12 +106,15 @@ class Availability(BaseTable):
         return self.date_within_start_and_end(datetime) & self.time_within_start_and_end(datetime) & self.on_the_right_day(datetime)
     
     @classmethod
-    def has_service_expression(self, service):
-        services_clause= true()
+    def services_clause(self, service):
+        clause= true()
         for key in service:
-            services_clause &= (getattr(Service,key)==service[key]) #service is a dictionary with keys that match the columns in the Service table
-
-        return (select(Service.id).join_from(Availability_to_Service, Service, Availability_to_Service.service==Service.id, isouter=True).where((Availability_to_Service.availability==self.id) & services_clause)).exists()
+            clause &= (getattr(Service,key)==service[key]) #service is a dictionary with keys that match the columns in the Service table
+        return clause
+    
+    @classmethod
+    def has_service_expression(self, service):
+        return (select(Service.id).join_from(Availability_to_Service, Service, Availability_to_Service.service==Service.id, isouter=True).where((Availability_to_Service.availability==self.id) & self.services_clause(service))).exists()
 
     @hybrid_method
     def has_service(self, service):
@@ -131,6 +134,7 @@ class Booking(BaseTable):
     end_datetime: Mapped[Datetime]
     code: Mapped[int] #Must be random
     timestamp: Mapped[Datetime]
+    cost: Mapped[float] = mapped_column(default=0)
     
     @classmethod
     def business_expression(self):
@@ -182,6 +186,14 @@ class Balance(BaseTable):
     
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
     balance: Mapped[float] = mapped_column(default=0)
+
+class Transaction(BaseTable):
+    __tablename__: "TRANSACTIONS"
+
+    id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
+    sender: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
+    recipient: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
+    amount: Mapped[float] = mapped_column(default=0)
 
 class Upload(BaseTable):
     __tablename__="UPLOADS"
