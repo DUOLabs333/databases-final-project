@@ -28,9 +28,6 @@ def create_booking():
     session.add(booking)
     session.commit()
 
-    transactions.create(booking)
-
-
     return result
 
 @app.route("/bookings/info")
