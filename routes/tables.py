@@ -130,6 +130,7 @@ def populate():
 
             booking=tables.Booking()
             booking.author=faker.random_element(elements=users_list)
+            booking.cost=faker.pyfloat(min_value=0)
             
             booking.availability_to_service=faker.random_element(elements=availability_to_service_list)
             booking.start_datetime=faker.date_time(tzinfo=UTC)
