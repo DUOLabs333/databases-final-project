@@ -1,8 +1,10 @@
 from utils import tables, balance
-from sqlalchemy import select
 from utils.common import session
 
 def create(booking, amount):
+    if amount==0:
+        return
+    
     user_id=booking.author
     business_id=session.get(tables.Availability, session.get(tables.Availability_to_Service, booking.availability_to_service).availability).business
 

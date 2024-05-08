@@ -188,7 +188,7 @@ class Balance(BaseTable):
     balance: Mapped[float] = mapped_column(default=0)
 
 class Transaction(BaseTable):
-    __tablename__: "TRANSACTIONS"
+    __tablename__= "TRANSACTIONS"
 
     id: Mapped[int] = mapped_column(primary_key=True,autoincrement=True)
     sender: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
