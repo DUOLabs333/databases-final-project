@@ -133,7 +133,6 @@ class Booking(BaseTable):
     start_datetime: Mapped[Datetime]
     end_datetime: Mapped[Datetime]
     code: Mapped[int] #Must be random
-    timestamp: Mapped[Datetime]
     cost: Mapped[float] = mapped_column(default=0)
     
     @classmethod
@@ -194,6 +193,7 @@ class Transaction(BaseTable):
     sender: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
     recipient: Mapped[int] = mapped_column(ForeignKey("USERS.id"))
     amount: Mapped[float] = mapped_column(default=0)
+    timestamp: Mapped[Datetime]
 
 class Upload(BaseTable):
     __tablename__="UPLOADS"

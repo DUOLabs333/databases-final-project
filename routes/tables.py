@@ -136,7 +136,7 @@ def populate():
             booking.start_datetime=faker.date_time(tzinfo=UTC)
             booking.end_datetime=faker.date_time_between(start_date=booking.start_datetime, end_date=MAX_DATETIME)
             booking.code=faker.unique.pyint(max_value=1000000)
-            booking.timestamp=faker.date_time_between(start_date="now", end_date=MAX_DATETIME)
+            
             session.add(booking)
         
         #We don't populate the Transactions or Uploads tables currently

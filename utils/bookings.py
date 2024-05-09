@@ -39,5 +39,3 @@ def assign_json_to_booking(booking, data):
 
     if check_for_conflict(booking.start_datetime, booking.end_datetime, business, booking.id): #Don't create booking if there is a conflict
         return -1
-    
-    booking.timestamp=datetime.now(common.UTC)
