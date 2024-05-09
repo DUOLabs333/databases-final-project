@@ -147,6 +147,10 @@ class Booking(BaseTable):
     def business(self):
         return self.business_expression().scalar_subquery()
 
+    @property
+    def service(self):
+        return session.get(Service, session.get(Availability_to_Service, self.availability_to_service).service).id
+
     
     #Later, if efficiency becomes a concern, we can add a modified time_period_contains here as is_within. However, that takes time, so I don't care right now
 
