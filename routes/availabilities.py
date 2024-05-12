@@ -99,23 +99,33 @@ def availability_search():
     
     length=request.json.get("length", 50)
     
-    query=select(tables.Availability_to_Service.id, tables.Availability.business, tables.User.zip_code, tables.Service.price).join_from(tables.Availability, tables.Availability_to_Service, tables.Availability.id==tables.Availability_to_Service.availability).join(tables.User, tables.Availability.business==tables.User.id).join(tables.Service, tables.Availability_to_Service.service==tables.Service.id).where(availabilities.get_availabilities_in_range(start_datetime, end_datetime, services) & tables.Availability.services_clause(services))
+    query=select(tables.Availability_to_Service.id, tables.Availability.business, tables.User.zip_code, tables.Service.price).join_from(tables.Availability, tables.Availability_to_Service, tables.Availability.id==tables.Availability_to_Service.availability).join(tables.User, tables.Availability.business==tables.User.id).join(tables.Service, tables.Availability_to_Service.service==tables.Service.id).where(availabilities.get_availabilities_in_range(start_datetime, end_datetime, services) & tables.Availability.services_clause(services)).order_by(tables.Service.price.asc()) #The SORT BY PRICE ASC clause makes it so that the more expensive instances of the same service from the same company will be listed after the cheaper one. This means we can just take the first instance from a company, and we will always get the cheapest offering from a company.  
 
     rows=[]
+    unique_businesses=set() #We want to dedupe based on business (If a business offers multiple prices for the same service
      
     for row in session.execute(query).all():
         if availabilities.check_for_conflict(start_datetime, end_datetime, row[1]):
             continue #Obviously, if this would create a conflict with a business, you can not use it
         
         distance=0
+        
+        row_keys=["availability_to_service", "business", "distance", "price"]
+        rows.append({row_keys[i]: row[i] for i in range(len(row))})
+        business=rows[-1]["business"]
 
+        if business in unique_businesses:
+            rows.pop()
+            continue
+        else:
+            unique_businesses.add(business)
+        
         if zip_code:
             distance=dist.query_postal_code(zip_code, row[1])
             if math.isnan(distance):
-                continue
+                distance=float("inf") #So it will be the last 
 
-        row_keys=["availability_to_service", "business", "distance", "price"]
-        rows.append({row_keys[i]: row[i] for i in range(len(row))})
+        rows[-1]["distance"]=distance
     
     if zip_code is not None:
         rows.sort(reverse=True, key= lambda row: row["distance"])

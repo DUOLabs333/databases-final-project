@@ -1,5 +1,6 @@
 from utils import tables, balance
-from utils.common import session
+from utils.common import session, UTC
+from datetime import datetime
 
 def create(booking, amount):
     if amount==0:
@@ -26,6 +27,7 @@ def create(booking, amount):
 
     ret=balance.AddToBalance(transaction.recipient, transaction.amount)
     
+    transaction.timestamp=datetime.now(UTC)
     session.add(transaction)
     session.commit()
 
