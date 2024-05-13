@@ -133,6 +133,12 @@ def availability_search():
     
     end=min(start+length+1, len(rows)) #The index of the last element that will be returned
 
+    for i in range(start, end):
+        val=rows[i]
+        for k,v in val.items():
+            if v==float("inf"):
+                val[k]="Infinity"
+
     result["info"]=rows[start: end]
     result["end"]=end
     
