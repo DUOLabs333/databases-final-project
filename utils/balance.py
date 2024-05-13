@@ -30,6 +30,8 @@ def RemoveFromBalance(id,amount):
     return balance.balance
 
 def RegisterBalance(id):
+    if session.get(tables.Balance, id):
+        return
     balance=tables.Balance()
     balance.balance=0
     balance.id=id

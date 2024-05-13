@@ -106,8 +106,8 @@ def signin():
     username=request.json["username"]
     password=request.json["password"]
     
-    if username=="root": #Hardcoded in
-        uid=-1
+    if username==common.ROOT_USERNAME: #Hardcoded in
+        uid=common.ROOT_UID
     else:
         with user_lock:
             user=session.scalars(select(tables.User).where(tables.User.username==username)).first()

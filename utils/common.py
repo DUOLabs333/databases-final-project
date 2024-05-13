@@ -38,6 +38,9 @@ import functools, hashlib, random, string, datetime
 
 UTC=ZoneInfo("UTC")
 DATETIME_FORMAT="%Y-%m-%d %H:%M:%S.%f"
+ROOT_UID=-1
+ROOT_USERNAME="root"
+ROOT_PASSWORD="root"
 
 def convert_to_datetime(value, timezone, time=False):
     if time:
@@ -64,7 +67,7 @@ def generate_salt():
 
 def authentication_wrapper(uid, password, func): 
    has_access=False
-   if uid==-1 and password=="root": #Hardcoded in, so we can bootstrap populating the table (and avoid a catch-22)
+   if uid==ROOT_UID and password==ROOT_PASSWORD: #Hardcoded in, so we can bootstrap populating the table (and avoid a catch-22)
        has_access=True
    else:
        user=session.get(tables.User,uid)
