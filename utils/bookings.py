@@ -2,7 +2,6 @@ from utils.availabilities import check_for_conflict
 from utils import tables, common, transactions
 from utils.common import session
 from zoneinfo import ZoneInfo
-from datetime import datetime
 
 def assign_json_to_booking(booking, data):
     timezone=ZoneInfo(data.get("timezone","UTC"))

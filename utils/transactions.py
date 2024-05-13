@@ -3,7 +3,7 @@ from utils.common import session
 from utils import common
 from datetime import datetime
 
-def _create(rom_id, to_id, amount): #Internal implementation
+def _create(from_id, to_id, amount): #Internal implementation
     if (amount==0) or (to_id==from_id):
         return
 
