@@ -146,6 +146,7 @@ def populate():
             balance=tables.Balance()
             balance.id=uid
             balance.balance=random_price()
+            session.add(balance)
 
         #We don't populate the Transactions and Uploads tables currently
         session.commit()
