@@ -20,12 +20,15 @@ REPAIRS=["SCREEN_REPAIR", "CAMERA_REPAIR", "BATTERY_REPLACEMENT"]
 VEHICLES=["TOYOTA", "BMW", "VOLKSWAGEN"]
 SERVICES=["DETAILING", "GENERAL_WASH","BRAKE_FLUID"]
 
-
 @app.route("/tables/populate")
 @common.authenticate
 def populate():
     result={}
-    faker=Faker() 
+    faker=Faker()
+
+    def random_price():
+        return round(faker.pyfloat(min_value=0),2)
+
     """
     By default, it is localized to US English (ie, "en_US"), but in the future, we could randomize the locale when generating data.
     
@@ -106,7 +109,7 @@ def populate():
             service=tables.Service()
             service.id=faker.unique.pyint()
             services_list.append(service.id)
-            service.price=faker.pyfloat(min_value=0)
+            service.price=random_price()
             is_repair=faker.pybool()
             if is_repair:
                 service.device=faker.random_element(elements=DEVICES)
@@ -130,7 +133,7 @@ def populate():
 
             booking=tables.Booking()
             booking.author=faker.random_element(elements=users_list)
-            booking.cost=faker.pyfloat(min_value=0)
+            booking.cost=random_price()
             
             booking.availability_to_service=faker.random_element(elements=availability_to_service_list)
             booking.start_datetime=faker.date_time(tzinfo=UTC)
@@ -139,7 +142,12 @@ def populate():
             
             session.add(booking)
         
-        #We don't populate the Transactions or Uploads tables currently
+        for uid in users_list: #Initialize balance for all test users
+            balance=tables.Balance()
+            balance.id=uid
+            balance.balance=random_price()
+
+        #We don't populate the Transactions and Uploads tables currently
         session.commit()
     return result
 

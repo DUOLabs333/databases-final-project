@@ -36,7 +36,7 @@ def create(booking, amount):
     if amount < 0: #Refunds
         ret=_create(business_id, user_id, -amount) #We (RepairWave) do not incur additional charges from refunds
     else:
-        balance.RegisterBalance(ROOT_UID)
+        balance.RegisterBalance(common.ROOT_UID)
         if _create(user_id, common.ROOT_UID, amount)==-1:
             return -1
         
