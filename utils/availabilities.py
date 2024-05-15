@@ -28,28 +28,33 @@ def assign_json_to_availability(availability, data):
                 bitstring |= (1 << DAY_TO_NUM[day])
             
             value=bitstring
-        elif col=="services":
-            query=select(tables.Availability_to_Service.service).where(tables.Availability_to_Service.service==availability.id)
-            old_services=set(session.scalars(query).all()) #The existing services attached to the availability
-            new_services=set(value) #What services should be attached to the availability
-
-            to_be_added=new_services-old_services
-            to_be_deleted=old_services - new_services
-
-            for service in to_be_added: #Add new rows for every new service
-                row=tables.Availability_to_Service()
-                row.availability=availability.id
-                row.service=service
-                session.add(row)
-
-            query=select(tables.Availability_to_Service).where(tables.Availability_to_Service.availability==availability.id & tables.Availability_to_Service.service.in_(to_be_deleted))
-            for row in session.scalars(query): #Delete all rows which is attached to the no-longer-attached services
-                session.delete(row)
-
-            session.commit()
-            continue
             
         setattr(availability,col,value)
+
+    session.commit()
+
+
+    if "services" in data:
+        services=data["services"]
+        query=select(tables.Availability_to_Service.service).where(tables.Availability_to_Service.service==availability.id)
+        old_services=set(session.scalars(query).all()) #The existing services attached to the availability
+
+        new_services=set(services) #What services should be attached to the availability
+
+        to_be_added=new_services-old_services
+        to_be_deleted=old_services - new_services
+
+        for service in to_be_added: #Add new rows for every new service
+            row=tables.Availability_to_Service()
+            row.availability=availability.id
+            row.service=service
+            session.add(row)
+
+        query=select(tables.Availability_to_Service).where(tables.Availability_to_Service.availability==availability.id & tables.Availability_to_Service.service.in_(to_be_deleted))
+        for row in session.scalars(query): #Delete all rows which is attached to the no-longer-attached services
+            session.delete(row)
+
+        session.commit()
         
 def reassign_or_cancel_bookings(availability): #Handle all bookings that are currently attached to an availability (availability may be deleted or edited, so all child bookings have to be upgraded to match)
     query=select(tables.Booking).join(tables.Availability_to_Service, tables.Booking.availability_to_service==tables.Availability_to_Service.id).where((tables.Availability_to_Service.availability==availability.id) & (tables.Booking.start_datetime < datetime.now())) #Get all bookings that use <availability>

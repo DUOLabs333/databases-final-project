@@ -26,13 +26,9 @@ def create_post():
     availability=tables.Availability()
 
     availability.business=uid
-    session.add(availability)
-
-    session.commit() #So we can get an id
-
     availabilities.assign_json_to_availability(availability, request.json)
-                
-    session.commit()
+
+    session.add(availability)
 
     if availability.available==False: #A block
         availabilities.reassign_or_cancel_bookings(availability)
