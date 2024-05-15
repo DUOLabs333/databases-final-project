@@ -15,7 +15,7 @@ def assign_json_to_availability(availability, data):
         else:
             continue
         
-        if col in ["id","author"]:
+        if col in ["id","business"]:
             continue
         if col.endswith("_datetime"):
             value=common.convert_to_datetime(value, timezone)

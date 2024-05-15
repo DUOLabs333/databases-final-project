@@ -24,11 +24,12 @@ def create_post():
     uid=request.json["uid"]
     
     availability=tables.Availability()
+
+    availability.business=uid
     session.add(availability)
 
     session.commit() #So we can get an id
-    
-    availability.business=uid
+
     availabilities.assign_json_to_availability(availability, request.json)
                 
     session.commit()
