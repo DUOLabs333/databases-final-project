@@ -186,7 +186,7 @@ def tables_export():
 
     keys=tables.Transaction.__mapper__.attrs.keys()
     buffer=io.BytesIO()
-    writer=csv.DictWriter(io.TextIOWrapper(buffer,encoding="utf-8",newline="",line_buffering=True, write_through=True), field_names=keys)
+    writer=csv.DictWriter(io.TextIOWrapper(buffer,encoding="utf-8",newline="",line_buffering=True, write_through=True), fieldnames=keys)
     writer.writeheader()
 
     query=select(tables.Transaction).where((tables.Transaction.timestamp >= start_datetime) & (tables.Transaction.timestamp <= end_datetime))
