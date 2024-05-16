@@ -32,7 +32,7 @@ def post_wrap(func):
 
 setattr(app,"route",post_wrap(app.route))
             
-CORS(app)
+CORS(app, expose_headers=["Content-Disposition"])
 
 import functools, hashlib, random, string, datetime
 
