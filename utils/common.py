@@ -44,19 +44,32 @@ ROOT_PASSWORD="root"
 
 def convert_to_datetime(value, timezone, time=False):
     if time:
-        value=datetime.time.fromisoformat(value)
+        value=datetime.time.fromisoformat(value) #Get time object
+        value=datetime.datetime.combine(datetime.datetime.today(), value, tzinfo=None) #Create a temporary datetime whose time component is value
     else:
         value=datetime.datetime.strptime(value, DATETIME_FORMAT)
 
-    return value.replace(tzinfo=timezone).astimezone(UTC).replace(tzinfo=None)
+    value=value.replace(tzinfo=timezone).astimezone(UTC).replace(tzinfo=None)
+
+    if time:
+        value=value.time()
+
+    return value
 
 def convert_from_datetime(value, timezone, time=False):
+
+    if time:
+        value=datetime.datetime.combine(datetime.datetime.today(), value, tzinfo=None)
+
     value=value.replace(tzinfo=UTC).astimezone(timezone)
 
     if time:
+        value=value.time()
+
         value=value.isoformat()
     else:
         value=value.strftime(DATETIME_FORMAT)
+
     return value
 
 def pass_hash(password, salt):
