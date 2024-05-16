@@ -28,8 +28,6 @@ def create_post():
     availability.business=uid
     availabilities.assign_json_to_availability(availability, request.json)
 
-    session.add(availability)
-
     if availability.available==False: #A block
         availabilities.reassign_or_cancel_bookings(availability)
         

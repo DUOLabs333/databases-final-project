@@ -31,6 +31,8 @@ def assign_json_to_availability(availability, data):
             
         setattr(availability,col,value)
 
+    if availability.id is None:
+        session.add(availability)
     session.commit()
 
 
