@@ -186,7 +186,8 @@ def tables_export():
 
     keys=tables.Transaction.__mapper__.attrs.keys()
     buffer=io.BytesIO()
-    writer=csv.DictWriter(io.TextIOWrapper(buffer,encoding="utf-8",newline="",line_buffering=True, write_through=True), fieldnames=keys)
+    wrapper=io.TextIOWrapper(buffer,encoding="utf-8",newline="",line_buffering=True, write_through=True)
+    writer=csv.DictWriter(wrapper, fieldnames=keys)
     writer.writeheader()
 
     query=select(tables.Transaction).where((tables.Transaction.timestamp >= start_datetime) & (tables.Transaction.timestamp <= end_datetime))
@@ -194,6 +195,7 @@ def tables_export():
     for row in session.scalars(query):
         writer.writerow({key: getattr(row, key) for key in keys})
 
+    wrapper.detach()
     buffer.seek(0)
 
 
