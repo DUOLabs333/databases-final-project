@@ -167,3 +167,34 @@ def drop():
         session.commit()
 
     return result
+
+import csv, io
+from zoneinfo import ZoneInfo
+from flask import send_file
+from sqlalchemy import select 
+
+@app.route("/tables/export")
+@common.authenticate
+def tables_export():
+    if request.json["uid"]!=common.ROOT_UID:
+        return {"error": "INSUFFICIENT_PERMISSION"}
+    
+    timezone=ZoneInfo(request.json.get("timezone","UTC"))
+    start_datetime=common.convert_to_datetime(request.json["start_datetime"], timezone)
+    end_datetime=common.convert_to_datetime(request.json["end_datetime"], timezone)
+
+
+    keys=tables.Transaction.__mapper__.attrs.keys()
+    buffer=io.BytesIO()
+    writer=csv.DictWriter(io.TextIOWrapper(buffer,encoding="utf-8",newline="",line_buffering=True, write_through=True), field_names=keys)
+    writer.writeheader()
+
+    query=select(tables.Transaction).where((tables.Transaction.timestamp >= start_datetime) & (tables.Transaction.timestamp <= end_datetime))
+
+    for row in session.scalars(query):
+        writer.writerow({key: getattr(row, key) for key in keys})
+
+    buffer.seek(0)
+
+
+    return send_file(buffer, mimetype="test/csv", as_attachment=True, download_name=f"transactions_{common.convert_from_datetime(start_datetime, common.UTC)}_{common.convert_from_datetime(end_datetime, common.UTC)}.csv")

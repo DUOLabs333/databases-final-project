@@ -6,6 +6,8 @@ from utils import services
 
 from flask import request
 
+from sqlalchemy import select 
+
 @app.route("/services/create")
 @common.authenticate
 def create_service():
