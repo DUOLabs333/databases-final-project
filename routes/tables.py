@@ -190,7 +190,7 @@ def tables_export():
     writer=csv.DictWriter(wrapper, fieldnames=keys)
     writer.writeheader()
 
-    query=select(tables.Transaction).where((tables.Transaction.timestamp >= start_datetime) & (tables.Transaction.timestamp <= end_datetime))
+    query=select(tables.Transaction).where((tables.Transaction.timestamp >= start_datetime) & (tables.Transaction.timestamp <= end_datetime)).order_by(tables.timestamp.asc())
 
     for row in session.scalars(query):
         writer.writerow({key: getattr(row, key) for key in keys})
