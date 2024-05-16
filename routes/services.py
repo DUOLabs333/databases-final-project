@@ -14,12 +14,14 @@ def create_service():
     uid=request.json["uid"]
     
     service=tables.Service()
+
+    service.business=uid
+    services.assign_json(service, request.json)
+
     session.add(service)
     
     session.commit() #So we can get an id
     
-    service.business=uid
-    services.assign_json(service, request.json)
                 
     session.commit()
 

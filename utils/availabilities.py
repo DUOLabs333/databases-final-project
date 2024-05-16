@@ -50,7 +50,7 @@ def assign_json_to_availability(availability, data):
             row.service=service
             session.add(row)
 
-        query=select(tables.Availability_to_Service).where(tables.Availability_to_Service.availability==availability.id & tables.Availability_to_Service.service.in_(to_be_deleted))
+        query=select(tables.Availability_to_Service).where((tables.Availability_to_Service.availability==availability.id) & tables.Availability_to_Service.service.in_(to_be_deleted))
         for row in session.scalars(query): #Delete all rows which is attached to the no-longer-attached services
             session.delete(row)
 
