@@ -64,6 +64,16 @@ def availability_info():
         result[col]=value
     return result
 
+@app.route("/availabilities/list")
+@common.authenticate
+def availability_list():
+    result={}
+    query=select(tables.Availability.id).where(tables.Availability.business==request.json["uid"])
+    
+    result["info"]=session.scalars(query).all()
+
+    return result
+
 @app.route("/availabilities/edit")
 @common.authenticate
 def availability_edit():     

@@ -108,6 +108,7 @@ def populate():
         for _ in range(NUM_ROWS):
             service=tables.Service()
             service.id=faker.unique.pyint()
+            service.business=faker.random_element(elements=users_list)
             services_list.append(service.id)
             service.price=random_price()
             is_repair=faker.pybool()

@@ -45,6 +45,17 @@ def service_info():
         
     return result
 
+@app.route("/services/list")
+@common.authenticate
+def service_list():
+    result={}
+    query=select(tables.Service.id).where(tables.Service.business==request.json["uid"])
+    
+    result["info"]=session.scalars(query).all()
+
+    return result
+
+
 @app.route("/services/edit")
 @common.authenticate
 def service_edit(): #Have to reassign all availbility that is attached to service     
