@@ -116,7 +116,7 @@ def availability_change(request, method):
     if availability is None:
         result["error"]="DOES_NOT_EXIST"
         return result
-    elif uid!=availability.author:
+    elif uid!=availability.business:
          result["error"]="INSUFFICIENT_PERMISSION"
          return result
     
